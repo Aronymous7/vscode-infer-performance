@@ -18,16 +18,37 @@
     "Java"
   ],
   "activationEvents": [
-    "onCommand:infer-for-vscode.runInfer"
+    "onCommand:infer-for-vscode.runInferWebview",
+    "onCommand:infer-for-vscode.enableCodeLens",
+    "onCommand:infer-for-vscode.disableCodeLens"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "infer-for-vscode.runInfer",
-        "title": "Run Infer"
+        "command": "infer-for-vscode.runInferWebview",
+        "title": "Infer - Webview",
+        "category": "Webview"
+      },
+      {
+        "command": "infer-for-vscode.enableCodeLens",
+        "title": "Infer - Enable CodeLens",
+        "category": "CodeLens"
+      },
+      {
+        "command": "infer-for-vscode.disableCodeLens",
+        "title": "Infer - Disable Codelens",
+        "category": "CodeLens"
       }
-    ]
+    ],
+    "configuration": {
+      "properties": {
+        "infer-for-vscode.enableCodeLens": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
