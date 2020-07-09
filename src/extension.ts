@@ -12,12 +12,14 @@ export function activate(context: vscode.ExtensionContext) {
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "infer-for-vscode" is now active!');
 
+  // --- Webview ---
+
   let webviewPanel: vscode.WebviewPanel | undefined = undefined;
 
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
-  let disposable = vscode.commands.registerCommand('infer-for-vscode.runInferWebview', () => {
+  let disposableCommand = vscode.commands.registerCommand('infer-for-vscode.runInferWebview', () => {
     if (webviewPanel) {
       // If we already have a webview panel, show it
       webviewPanel.reveal(vscode.ViewColumn.Two);
@@ -60,25 +62,44 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage('Infer has been executed.');
     }
   });
-  disposables.push(disposable);
-  context.subscriptions.push(disposable);
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
 
-  const codelensProvider = new CodelensProvider();
+  // --- CodeLens ---
 
-  vscode.languages.registerCodeLensProvider("java", codelensProvider);
+  let codeLensProviderDisposables = new Map();
 
-  vscode.commands.registerCommand("infer-for-vscode.enableCodeLens", () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableCodeLens", () => {
     if (!executeInferOnCurrentFile()) { return; }
-    vscode.workspace.getConfiguration("infer-for-vscode").update("enableCodeLens", true, true);
-  });
+    let inferCost = readInferCostFile();
+    if (inferCost === null) { return; }
 
-  vscode.commands.registerCommand("infer-for-vscode.disableCodeLens", () => {
+    const sourceFileName = vscode.window.activeTextEditor?.document.fileName.split("/").pop();
+    const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
+    if (codeLensProviderDisposables.has(sourceFileName)) {
+      codeLensProviderDisposables.get(sourceFileName).dispose();
+    }
+    let disposable = vscode.languages.registerCodeLensProvider(docSelector, new CodelensProvider(inferCost));
+    codeLensProviderDisposables.set(sourceFileName, disposable);
+    vscode.workspace.getConfiguration("infer-for-vscode").update("enableCodeLens", true, true);
+    disposables.push(disposable);
+
+    vscode.window.showInformationMessage('Infer has been executed.');
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disableCodeLens", () => {
     vscode.workspace.getConfiguration("infer-for-vscode").update("enableCodeLens", false, true);
   });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
 
-  vscode.commands.registerCommand("infer-for-vscode.codelensAction", (args: any) => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensAction", (args: any) => {
     vscode.window.showInformationMessage(`CodeLens action clicked with args=${args}`);
   });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
 }
 
 // this method is called when your extension is deactivated
@@ -100,7 +121,6 @@ function executeInferOnCurrentFile() {
     return false;
   }
   const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
-  console.log(sourceFileName);
   childProcess.execSync(`infer --cost -o /tmp/infer-out/${sourceFileName} -- javac ${sourceFilePath}`);
   return true;
 }

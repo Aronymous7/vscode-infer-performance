@@ -37,7 +37,7 @@
       },
       {
         "command": "infer-for-vscode.disableCodeLens",
-        "title": "Infer - Disable Codelens",
+        "title": "Infer - Disable CodeLens",
         "category": "CodeLens"
       }
     ],
@@ -45,7 +45,7 @@
       "properties": {
         "infer-for-vscode.enableCodeLens": {
           "type": "boolean",
-          "default": true
+          "default": false
         }
       }
     }

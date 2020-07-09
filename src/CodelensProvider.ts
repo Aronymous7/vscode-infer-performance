@@ -6,12 +6,16 @@ export class CodelensProvider implements vscode.CodeLensProvider {
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
-  constructor() {
-    this.regex = /(private|protected|public).+\(.*\)\s*\{/g;
+  private inferCost: any;
+
+  constructor(inferCost: any) {
+    this.regex = /(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])/g;
 
     vscode.workspace.onDidChangeConfiguration((_) => {
       this._onDidChangeCodeLenses.fire();
     });
+
+    this.inferCost = inferCost;
   }
 
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
@@ -37,8 +41,27 @@ export class CodelensProvider implements vscode.CodeLensProvider {
 
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
     if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableCodeLens", true)) {
+      const regex = new RegExp(/(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])/g);
+      const document = vscode.window.activeTextEditor?.document;
+      if (!document) { return; }
+      const text = document.getText();
+      let methodName = "";
+      let matches;
+      while ((matches = regex.exec(text)) !== null) {
+        if (document.lineAt(document.positionAt(matches.index).line).lineNumber === codeLens.range.end.line) {
+          methodName = matches[2];
+          break;
+        }
+      }
+      let currentInferCostItem: any;
+      for (let inferCostItem of this.inferCost) {
+        if (inferCostItem.procedure_name === methodName) {
+          currentInferCostItem = inferCostItem;
+          break;
+        }
+      }
       codeLens.command = {
-        title: "Codelens provided by Infer for VSCode extension",
+        title: `Execution cost: ${currentInferCostItem.exec_cost.hum.hum_polynomial} (Big-O: ${currentInferCostItem.exec_cost.hum.big_o})`,
         tooltip: "Tooltip provided by Infer for VSCode extension",
         command: "infer-for-vscode.codelensAction",
         arguments: ["Argument 1", false]
