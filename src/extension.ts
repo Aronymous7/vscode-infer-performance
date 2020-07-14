@@ -1,10 +1,13 @@
 import * as vscode from 'vscode';
 import { CodelensProvider } from './CodelensProvider';
+import { InferCostItem } from './CustomTypes';
 
 const childProcess = require('child_process');
 const fs = require('fs');
 
 let disposables: vscode.Disposable[] = [];
+
+const inferOutputDirectory = '/tmp/infer-out';
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -25,10 +28,8 @@ export function activate(context: vscode.ExtensionContext) {
       webviewPanel.reveal(vscode.ViewColumn.Two);
     } else {
       // Otherwise, execute Infer and create the webview panel
-      if (!executeInferOnCurrentFile()) { return; }
-
-      let inferCost = readInferCostFile();
-      if (inferCost === null) { return; }
+      let inferCost: InferCostItem[] | undefined = executeInferOnCurrentFile();
+      if (inferCost === undefined) { return; }
 
       // Create and show a new webview panel
       webviewPanel = vscode.window.createWebviewPanel(
@@ -70,9 +71,8 @@ export function activate(context: vscode.ExtensionContext) {
   let codeLensProviderDisposables = new Map();
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableCodeLens", () => {
-    if (!executeInferOnCurrentFile()) { return; }
-    let inferCost = readInferCostFile();
-    if (inferCost === null) { return; }
+    let inferCost: InferCostItem[] | undefined = executeInferOnCurrentFile();
+    if (inferCost === undefined) { return; }
 
     const sourceFileName = vscode.window.activeTextEditor?.document.fileName.split("/").pop();
     const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
@@ -104,8 +104,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 // this method is called when your extension is deactivated
 export function deactivate() {
-  if (fs.existsSync('/tmp/infer-out')) {
-    let inferOut = vscode.Uri.file('/tmp/infer-out');
+  if (fs.existsSync(inferOutputDirectory)) {
+    let inferOut = vscode.Uri.file(inferOutputDirectory);
     vscode.workspace.fs.delete(inferOut, {recursive: true});
   }
   if (disposables) {
@@ -118,23 +118,27 @@ function executeInferOnCurrentFile() {
   const sourceFilePath = vscode.window.activeTextEditor?.document.fileName;
   if (!sourceFilePath?.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
-    return false;
+    console.log("Tried to execute Infer on non-Java file.");
+    return undefined;
   }
   const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
-  childProcess.execSync(`infer --cost -o /tmp/infer-out/${sourceFileName} -- javac ${sourceFilePath}`);
-  return true;
-}
+  childProcess.execSync(`infer --cost -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
 
-function readInferCostFile() {
-  const sourceFileName = vscode.window.activeTextEditor?.document.fileName.split("/").pop()?.split(".")[0];
+  let inferCost: InferCostItem[];
   try {
-    const inferCostJsonString = fs.readFileSync(`/tmp/infer-out/${sourceFileName}/costs-report.json`);
-    let inferCost = JSON.parse(inferCostJsonString);
-    return inferCost.sort((a: any, b: any) => parseFloat(a.loc.lnum) - parseFloat(b.loc.lnum));
+    const inferCostJsonString = fs.readFileSync(`${inferOutputDirectory}/${sourceFileName}/costs-report.json`);
+    inferCost = JSON.parse(inferCostJsonString);
   } catch (err) {
     console.log(err);
-    return null;
+    console.log("InferCost file could not be read.");
+    return undefined;
+  } finally {
+    if (fs.existsSync(`${inferOutputDirectory}/${sourceFileName}`)) {
+      let inferOut = vscode.Uri.file(`${inferOutputDirectory}/${sourceFileName}`);
+      vscode.workspace.fs.delete(inferOut, {recursive: true});
+    }
   }
+  return inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
 }
 
 function getInferWebviewContent(inferCostHtmlString: string) {

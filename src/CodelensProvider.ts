@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { InferCostItem } from './CustomTypes';
 
 export class CodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
@@ -6,9 +7,9 @@ export class CodelensProvider implements vscode.CodeLensProvider {
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
-  private inferCost: any;
+  private inferCost: InferCostItem[];
 
-  constructor(inferCost: any) {
+  constructor(inferCost: InferCostItem[]) {
     this.regex = /(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])/g;
 
     vscode.workspace.onDidChangeConfiguration((_) => {
@@ -41,24 +42,29 @@ export class CodelensProvider implements vscode.CodeLensProvider {
 
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
     if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableCodeLens", true)) {
-      const regex = new RegExp(/(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])/g);
+      const regex = new RegExp(/(?:public|protected|private|static|\s) +(?:[\w\<\>\[\]]+)\s+(\w+) *\([^\)]*\) *(?:\{?|[^;])/g);
       const document = vscode.window.activeTextEditor?.document;
       if (!document) { return; }
       const text = document.getText();
       let methodName = "";
       let matches;
       while ((matches = regex.exec(text)) !== null) {
+        console.log(matches);
         if (document.lineAt(document.positionAt(matches.index).line).lineNumber === codeLens.range.end.line) {
-          methodName = matches[2];
+          methodName = matches[1];
           break;
         }
       }
-      let currentInferCostItem: any;
+      let currentInferCostItem: InferCostItem | undefined;
       for (let inferCostItem of this.inferCost) {
         if (inferCostItem.procedure_name === methodName) {
           currentInferCostItem = inferCostItem;
           break;
         }
+      }
+      if (currentInferCostItem === undefined) {
+        console.log(`Method with name '${methodName}' could not be found in InferCost array.`);
+        return;
       }
       codeLens.command = {
         title: `Execution cost: ${currentInferCostItem.exec_cost.hum.hum_polynomial} (Big-O: ${currentInferCostItem.exec_cost.hum.big_o})`,
