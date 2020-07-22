@@ -1,3 +1,5 @@
+import * as vscode from 'vscode';
+
 export interface InferCostItem {
   hash: string;
   loc: {
@@ -24,4 +26,9 @@ export interface InferCostItem {
       big_o: string;
     };
   };
+}
+
+export interface MethodDeclaration {
+  name: string;
+  range: vscode.Range;
 }
