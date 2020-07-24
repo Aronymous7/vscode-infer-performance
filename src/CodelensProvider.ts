@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { InferCostItem, MethodDeclaration } from './CustomTypes';
+import { getMethodDeclarations } from './CommonFunctions';
 
 export class CodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
@@ -18,7 +19,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
 
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableCodeLens", true)) {
-      const methodDeclarations = this.getMethodDeclarations(document);
+      const methodDeclarations = getMethodDeclarations(document);
       this.codeLenses = [];
       methodDeclarations.forEach(methodDeclaration => {
         this.codeLenses.push(new vscode.CodeLens(methodDeclaration.range));
@@ -32,7 +33,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
     if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableCodeLens", true)) {
       const document = vscode.window.activeTextEditor?.document;
       if (!document) { return; }
-      const methodDeclarations = this.getMethodDeclarations(document);
+      const methodDeclarations = getMethodDeclarations(document);
       let methodName = "";
       methodDeclarations.some(methodDeclaration => {
         if (methodDeclaration.range.end.line === codeLens.range.end.line) {
@@ -60,22 +61,5 @@ export class CodelensProvider implements vscode.CodeLensProvider {
       return codeLens;
     }
     return null;
-  }
-
-  private getMethodDeclarations(document: vscode.TextDocument) {
-    const regex = new RegExp(/(?:public|protected|private|static|\s) +(?:[\w\<\>\[\]]+)\s+(\w+) *\([^\)]*\) *(?:\{?|[^;])/g);
-    const text = document.getText();
-    let methodDeclarations: MethodDeclaration[] = [];
-    let matches;
-    while ((matches = regex.exec(text)) !== null) {
-      const line = document.lineAt(document.positionAt(matches.index).line);
-      const indexOf = line.text.indexOf(matches[0]);
-      const position = new vscode.Position(line.lineNumber, indexOf);
-      const range = document.getWordRangeAtPosition(position, new RegExp(regex));
-      if (range) {
-        methodDeclarations.push({ name: matches[1], range: range });
-      }
-    }
-    return methodDeclarations;
   }
 }

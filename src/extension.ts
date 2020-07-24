@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { CodelensProvider } from './CodelensProvider';
 import { InferCostItem } from './CustomTypes';
+import { getMethodDeclarations } from './CommonFunctions';
 
 const childProcess = require('child_process');
 const fs = require('fs');
@@ -97,6 +98,32 @@ export function activate(context: vscode.ExtensionContext) {
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensAction", (args: any) => {
     vscode.window.showInformationMessage(`CodeLens action clicked with args=${args}`);
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  // --- Editor Decorator ---
+
+  let timeout: NodeJS.Timer | undefined = undefined;
+
+  // create a decorator type that we use to decorate method declarations
+  const methodDeclarationDecorationType = vscode.window.createTextEditorDecorationType({
+    backgroundColor: '#888822',
+    overviewRulerColor: '#888822',
+    overviewRulerLane: vscode.OverviewRulerLane.Right
+  });
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableEditorDecorator", () => {
+    let activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) { return; }
+    const document = activeEditor.document;
+    const methodDeclarations = getMethodDeclarations(document);
+    const methodDeclarationDecorations: vscode.DecorationOptions[] = [];
+    methodDeclarations.forEach(methodDeclaration => {
+      const decoration = { range: methodDeclaration.range, hoverMessage: 'This is a method.' };
+      methodDeclarationDecorations.push(decoration);
+    });
+    activeEditor.setDecorations(methodDeclarationDecorationType, methodDeclarationDecorations);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

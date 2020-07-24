@@ -20,7 +20,7 @@
   "activationEvents": [
     "onCommand:infer-for-vscode.runInferWebview",
     "onCommand:infer-for-vscode.enableCodeLens",
-    "onCommand:infer-for-vscode.disableCodeLens"
+    "onCommand:infer-for-vscode.enableEditorDecorator"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -39,6 +39,11 @@
         "command": "infer-for-vscode.disableCodeLens",
         "title": "Infer - Disable CodeLens",
         "category": "CodeLens"
+      },
+      {
+        "command": "infer-for-vscode.enableEditorDecorator",
+        "title": "Infer - Enable Editor Decorator",
+        "category": "Editor Decorator"
       }
     ],
     "configuration": {
