@@ -30,5 +30,6 @@ export interface InferCostItem {
 
 export interface MethodDeclaration {
   name: string;
-  range: vscode.Range;
+  declarationRange: vscode.Range;
+  nameRange: vscode.Range;
 }

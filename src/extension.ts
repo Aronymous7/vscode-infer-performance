@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { CodelensProvider } from './CodelensProvider';
 import { InferCostItem } from './CustomTypes';
-import { getMethodDeclarations } from './CommonFunctions';
+import { getMethodDeclarations, isExpensiveMethod } from './CommonFunctions';
 
 const childProcess = require('child_process');
 const fs = require('fs');
@@ -106,24 +106,53 @@ export function activate(context: vscode.ExtensionContext) {
 
   let timeout: NodeJS.Timer | undefined = undefined;
 
-  // create a decorator type that we use to decorate method declarations
+  // create decorator types that we use to decorate method declarations
   const methodDeclarationDecorationType = vscode.window.createTextEditorDecorationType({
-    backgroundColor: '#888822',
-    overviewRulerColor: '#888822',
-    overviewRulerLane: vscode.OverviewRulerLane.Right
+    after: {
+      contentText: ' (cost could be displayed here as well)',
+      color: 'rgba(50, 200, 50, 0.5)'
+    }
+  });
+  const methodNameDecorationType = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(150, 255, 10, 0.5)',
+    overviewRulerColor: 'rgba(150, 250, 50, 1)',
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
+  });
+  const methodNameDecorationTypeExpensive = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(255, 0, 0, 0.7)',
+    overviewRulerColor: '#ff0000',
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableEditorDecorator", () => {
+    let inferCost: InferCostItem[] | undefined = executeInferOnCurrentFile();
+    if (inferCost === undefined) { return; }
+
     let activeEditor = vscode.window.activeTextEditor;
     if (!activeEditor) { return; }
     const document = activeEditor.document;
     const methodDeclarations = getMethodDeclarations(document);
     const methodDeclarationDecorations: vscode.DecorationOptions[] = [];
-    methodDeclarations.forEach(methodDeclaration => {
-      const decoration = { range: methodDeclaration.range, hoverMessage: 'This is a method.' };
-      methodDeclarationDecorations.push(decoration);
-    });
+    const methodNameDecorations: vscode.DecorationOptions[] = [];
+    const methodNameDecorationsExpensive: vscode.DecorationOptions[] = [];
+    for (let inferCostItem of inferCost) {
+      methodDeclarations.some(methodDeclaration => {
+        if (inferCostItem.procedure_name === methodDeclaration.name) {
+          const declarationDecoration = { range: methodDeclaration.declarationRange };
+          const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.hum.hum_polynomial} -- ${inferCostItem.exec_cost.hum.big_o}` };
+          methodDeclarationDecorations.push(declarationDecoration);
+          if (isExpensiveMethod(inferCostItem.procedure_name, inferCost)) {
+            methodNameDecorationsExpensive.push(nameDecoration);
+          } else {
+            methodNameDecorations.push(nameDecoration);
+          }
+          return true;
+        }
+      });
+    }
     activeEditor.setDecorations(methodDeclarationDecorationType, methodDeclarationDecorations);
+    activeEditor.setDecorations(methodNameDecorationType, methodNameDecorations);
+    activeEditor.setDecorations(methodNameDecorationTypeExpensive, methodNameDecorationsExpensive);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

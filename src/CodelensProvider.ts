@@ -22,7 +22,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
       const methodDeclarations = getMethodDeclarations(document);
       this.codeLenses = [];
       methodDeclarations.forEach(methodDeclaration => {
-        this.codeLenses.push(new vscode.CodeLens(methodDeclaration.range));
+        this.codeLenses.push(new vscode.CodeLens(methodDeclaration.declarationRange));
       });
       return this.codeLenses;
     }
@@ -36,7 +36,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
       const methodDeclarations = getMethodDeclarations(document);
       let methodName = "";
       methodDeclarations.some(methodDeclaration => {
-        if (methodDeclaration.range.end.line === codeLens.range.end.line) {
+        if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
           methodName = methodDeclaration.name;
           return true;
         }

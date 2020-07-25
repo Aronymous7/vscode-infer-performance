@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { InferCostItem, MethodDeclaration } from './CustomTypes';
 
-
 export function getMethodDeclarations(document: vscode.TextDocument) {
   const regex = new RegExp(/(?:public|protected|private|static|\s) +(?:[\w\<\>\[\]]+)\s+(\w+) *\([^\)]*\) *(?:\{?|[^;])/g);
   const text = document.getText();
@@ -9,13 +8,41 @@ export function getMethodDeclarations(document: vscode.TextDocument) {
   let matches;
   while ((matches = regex.exec(text)) !== null) {
     const line = document.lineAt(document.positionAt(matches.index).line);
-    const indexOf = line.text.indexOf(matches[1]);
-    const startPosition = new vscode.Position(line.lineNumber, indexOf);
-    const endPosition = new vscode.Position(line.lineNumber, indexOf + matches[1].length);
-    const range = new vscode.Range(startPosition, endPosition);
-    if (range) {
-      methodDeclarations.push({ name: matches[1], range: range });
+
+    const declarationIndexOf = line.text.indexOf(matches[0]);
+    const declarationStartPosition = new vscode.Position(line.lineNumber, declarationIndexOf);
+    const declarationEndPosition = new vscode.Position(line.lineNumber, declarationIndexOf + matches[0].length);
+    const declarationRange = new vscode.Range(declarationStartPosition, declarationEndPosition);
+
+    const nameIndexOf = line.text.indexOf(matches[1]);
+    const nameStartPosition = new vscode.Position(line.lineNumber, nameIndexOf);
+    const nameEndPosition = new vscode.Position(line.lineNumber, nameIndexOf + matches[1].length);
+    const nameRange = new vscode.Range(nameStartPosition, nameEndPosition);
+    if (declarationRange && nameRange) {
+      methodDeclarations.push({ name: matches[1], declarationRange: declarationRange, nameRange: nameRange });
     }
   }
   return methodDeclarations;
+}
+
+export function isExpensiveMethod(methodName: string, inferCost: InferCostItem[] | undefined) {
+  if (inferCost === undefined) { return false; }
+
+  let mostExpensiveConstantMethod = {
+    name: '',
+    executionCost: 0
+  };
+  for (let inferCostItem of inferCost) {
+    if (+inferCostItem.exec_cost.hum.hum_degree === 0 && +inferCostItem.exec_cost.hum.hum_polynomial > mostExpensiveConstantMethod.executionCost) {
+      mostExpensiveConstantMethod = {
+        name: inferCostItem.procedure_name,
+        executionCost: +inferCostItem.exec_cost.hum.hum_polynomial
+      };
+    }
+  }
+  if (methodName === mostExpensiveConstantMethod.name) {
+    return true;
+  } else {
+    return false;
+  }
 }
