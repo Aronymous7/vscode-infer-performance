@@ -18,37 +18,25 @@
     "Java"
   ],
   "activationEvents": [
-    "onCommand:infer-for-vscode.runInferWebview",
-    "onCommand:infer-for-vscode.enableCodeLens",
-    "onCommand:infer-for-vscode.enableEditorDecorator"
+    "onCommand:infer-for-vscode.enableInfer"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "infer-for-vscode.runInferWebview",
-        "title": "Infer - Webview",
-        "category": "Webview"
+        "command": "infer-for-vscode.enableInfer",
+        "title": "Enable Infer",
+        "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.enableCodeLens",
-        "title": "Infer - Enable CodeLens",
-        "category": "CodeLens"
-      },
-      {
-        "command": "infer-for-vscode.disableCodeLens",
-        "title": "Infer - Disable CodeLens",
-        "category": "CodeLens"
-      },
-      {
-        "command": "infer-for-vscode.enableEditorDecorator",
-        "title": "Infer - Enable Editor Decorator",
-        "category": "Editor Decorator"
+        "command": "infer-for-vscode.disableInfer",
+        "title": "Disable Infer",
+        "category": "Infer"
       }
     ],
     "configuration": {
       "properties": {
-        "infer-for-vscode.enableCodeLens": {
+        "infer-for-vscode.enableInfer": {
           "type": "boolean",
           "default": false
         }

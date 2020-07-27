@@ -7,6 +7,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
+  private document: vscode.TextDocument | undefined;
   private inferCost: InferCostItem[];
 
   constructor(inferCost: InferCostItem[]) {
@@ -18,7 +19,8 @@ export class CodelensProvider implements vscode.CodeLensProvider {
   }
 
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
-    if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableCodeLens", true)) {
+    if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableInfer", false)) {
+      this.document = document;
       const methodDeclarations = getMethodDeclarations(document);
       this.codeLenses = [];
       methodDeclarations.forEach(methodDeclaration => {
@@ -30,10 +32,9 @@ export class CodelensProvider implements vscode.CodeLensProvider {
   }
 
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
-    if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableCodeLens", true)) {
-      const document = vscode.window.activeTextEditor?.document;
-      if (!document) { return; }
-      const methodDeclarations = getMethodDeclarations(document);
+    if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableInfer", false)) {
+      if (!this.document) { return; }
+      const methodDeclarations = getMethodDeclarations(this.document);
       let methodName = "";
       methodDeclarations.some(methodDeclaration => {
         if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
@@ -48,7 +49,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
           break;
         }
       }
-      if (currentInferCostItem === undefined) {
+      if (!currentInferCostItem) {
         console.log(`Method with name '${methodName}' could not be found in InferCost array.`);
         return;
       }
@@ -56,7 +57,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
         title: `Execution cost: ${currentInferCostItem.exec_cost.hum.hum_polynomial} (Big-O: ${currentInferCostItem.exec_cost.hum.big_o})`,
         tooltip: "Tooltip provided by Infer for VSCode extension",
         command: "infer-for-vscode.codelensAction",
-        arguments: ["Argument 1", false]
+        arguments: [currentInferCostItem]
       };
       return codeLens;
     }
