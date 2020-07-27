@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { InferCostItem, MethodDeclaration } from './CustomTypes';
+import { InferCostItem } from './CustomTypes';
 import { getMethodDeclarations } from './CommonFunctions';
 
 export class CodelensProvider implements vscode.CodeLensProvider {

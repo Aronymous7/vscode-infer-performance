@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CodelensProvider } from './CodelensProvider';
+import { OverviewCodelensProvider } from './OverviewCodelensProvider';
 import { InferCostItem } from './CustomTypes';
 import { getMethodDeclarations, isExpensiveMethod } from './CommonFunctions';
 
@@ -13,6 +14,7 @@ let inferCost: InferCostItem[] | undefined = [];
 let activeTextEditor: vscode.TextEditor | undefined;
 
 let codeLensProviderDisposables = new Map();
+let overviewCodeLensProviderDisposables = new Map();
 
 let webviewPanel: vscode.WebviewPanel | undefined = undefined;
 
@@ -45,8 +47,8 @@ export function activate(context: vscode.ExtensionContext) {
     inferCost = executeInferOnCurrentFile();
 
     createCodeLenses();
+    createOverviewCodeLenses();
     createEditorDecorators();
-    createWebviewOverview();
 
     vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
     vscode.window.showInformationMessage('Infer has been executed.');
@@ -61,7 +63,13 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensAction", (inferCostItem: InferCostItem) => {
-    vscode.window.showInformationMessage(`Big-O Notation: ${inferCostItem.exec_cost.hum.big_o}`);
+    vscode.window.showInformationMessage(`TODO: show cost history`);
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensOverviewAction", () => {
+    createWebviewOverview();
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -119,6 +127,19 @@ function createCodeLenses() {
   disposables.push(disposable);
 }
 
+function createOverviewCodeLenses() {
+  if (!inferCost) { return; }
+
+  const sourceFileName = activeTextEditor?.document.fileName.split("/").pop();
+  const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
+  if (overviewCodeLensProviderDisposables.has(sourceFileName)) {
+    overviewCodeLensProviderDisposables.get(sourceFileName).dispose();
+  }
+  let disposable = vscode.languages.registerCodeLensProvider(docSelector, new OverviewCodelensProvider());
+  overviewCodeLensProviderDisposables.set(sourceFileName, disposable);
+  disposables.push(disposable);
+}
+
 function createEditorDecorators() {
   if (!inferCost) { return; }
   if (!activeTextEditor) { return; }
@@ -150,6 +171,10 @@ function createEditorDecorators() {
 
 function createWebviewOverview() {
   if (!inferCost) { return; }
+
+  if (webviewPanel) {
+    webviewPanel.dispose();
+  }
 
   // Create and show a new webview panel
   webviewPanel = vscode.window.createWebviewPanel(
