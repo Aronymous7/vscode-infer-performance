@@ -9,14 +9,17 @@ const fs = require('fs');
 
 const inferOutputDirectory = '/tmp/infer-out';
 
-let disposables: vscode.Disposable[] = [];
 let inferCost: InferCostItem[] | undefined = [];
+let inferCostHistory = new Map<string, InferCostItem[]>();
+
+let disposables: vscode.Disposable[] = [];
 let activeTextEditor: vscode.TextEditor | undefined;
 
 let codeLensProviderDisposables = new Map();
 let overviewCodeLensProviderDisposables = new Map();
 
-let webviewPanel: vscode.WebviewPanel | undefined = undefined;
+let webviewOverview: vscode.WebviewPanel | undefined = undefined;
+let webviewHistory: vscode.WebviewPanel | undefined = undefined;
 
 // Decorator types that we use to decorate method declarations
 const methodDeclarationDecorationType = vscode.window.createTextEditorDecorationType({
@@ -45,6 +48,17 @@ export function activate(context: vscode.ExtensionContext) {
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", () => {
     activeTextEditor = vscode.window.activeTextEditor;
     inferCost = executeInferOnCurrentFile();
+    if (!inferCost) { return; }
+
+    for (const inferCostItem of inferCost) {
+      let costHistory: InferCostItem[] | undefined = [];
+      if (inferCostHistory.has(`${activeTextEditor?.document.fileName}:${inferCostItem.procedure_name}`)) {
+        costHistory = inferCostHistory.get(`${activeTextEditor?.document.fileName}:${inferCostItem.procedure_name}`);
+      }
+      if (!costHistory) { return; }
+      costHistory.push(inferCostItem);
+      inferCostHistory.set(`${activeTextEditor?.document.fileName}:${inferCostItem.procedure_name}`, costHistory);
+    }
 
     createCodeLenses();
     createOverviewCodeLenses();
@@ -62,8 +76,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensAction", (inferCostItem: InferCostItem) => {
-    vscode.window.showInformationMessage(`TODO: show cost history`);
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensAction", (methodKey: string) => {
+    createWebviewHistory(methodKey);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -172,14 +186,14 @@ function createEditorDecorators() {
 function createWebviewOverview() {
   if (!inferCost) { return; }
 
-  if (webviewPanel) {
-    webviewPanel.dispose();
+  if (webviewOverview) {
+    webviewOverview.dispose();
   }
 
   // Create and show a new webview panel
-  webviewPanel = vscode.window.createWebviewPanel(
-    'inferCost', // Identifies the type of the webview. Used internally
-    'Infer Cost', // Title of the panel displayed to the user
+  webviewOverview = vscode.window.createWebviewPanel(
+    'inferCostOverview', // Identifies the type of the webview. Used internally
+    'Infer Cost Overview', // Title of the panel displayed to the user
     vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
     {localResourceRoots: []} // Webview options.
   );
@@ -195,7 +209,7 @@ function createWebviewOverview() {
 <hr>`;
   }
 
-  webviewPanel.webview.html = `<!DOCTYPE html>
+  webviewOverview.webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -206,6 +220,49 @@ function createWebviewOverview() {
   <h1>Infer Cost Overview</h1>
   <div>
     ${inferCostOverviewHtmlString}
+  <div>
+</body>
+</html>`;
+}
+
+function createWebviewHistory(methodKey: string) {
+  if (!inferCost) { return; }
+
+  if (webviewHistory) {
+    webviewHistory.dispose();
+  }
+
+  // Create and show a new webview panel
+  webviewHistory = vscode.window.createWebviewPanel(
+    'inferCostHistory', // Identifies the type of the webview. Used internally
+    'Infer Cost History', // Title of the panel displayed to the user
+    vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
+    {localResourceRoots: []} // Webview options.
+  );
+
+  const costHistory = inferCostHistory.get(methodKey);
+  if (!costHistory || costHistory.length <= 0) { return; }
+  let inferCostHistoryHtmlString = ``;
+  for (let costHistoryItem of costHistory) {
+    inferCostHistoryHtmlString += `<div>
+<h2>${costHistoryItem.procedure_name} (line ${costHistoryItem.loc.lnum})</h2>
+<div>Allocation cost: ${costHistoryItem.alloc_cost.hum.hum_polynomial} : ${costHistoryItem.alloc_cost.hum.big_o}</div>
+<div>Execution cost: ${costHistoryItem.exec_cost.hum.hum_polynomial} : ${costHistoryItem.exec_cost.hum.big_o}</div>
+</div>
+<hr>`;
+  }
+
+  webviewHistory.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infer Cost History</title>
+</head>
+<body>
+  <h1>Infer Cost History for: ${costHistory[0].procedure_name}</h1>
+  <div>
+    ${inferCostHistoryHtmlString}
   <div>
 </body>
 </html>`;
