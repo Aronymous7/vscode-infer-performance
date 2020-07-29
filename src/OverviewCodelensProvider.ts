@@ -41,7 +41,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
       codeLens.command = {
         title: `Overview`,
         tooltip: "Tooltip provided by Infer for VSCode extension",
-        command: "infer-for-vscode.codelensOverviewAction",
+        command: "infer-for-vscode.overviewCodelensAction",
         arguments: [selectedMethodName]
       };
       return codeLens;

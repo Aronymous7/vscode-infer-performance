@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { InferCostItem } from './CustomTypes';
 import { getMethodDeclarations } from './CommonFunctions';
 
-export class CodelensProvider implements vscode.CodeLensProvider {
+export class DetailCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
@@ -56,7 +56,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
       codeLens.command = {
         title: `Execution cost: ${currentInferCostItem.exec_cost.polynomial} -- ${currentInferCostItem.exec_cost.big_o}`,
         tooltip: "Tooltip provided by Infer for VSCode extension",
-        command: "infer-for-vscode.codelensAction",
+        command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };
       return codeLens;

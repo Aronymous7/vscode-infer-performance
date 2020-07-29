@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CodelensProvider } from './CodelensProvider';
+import { DetailCodelensProvider } from './DetailCodelensProvider';
 import { OverviewCodelensProvider } from './OverviewCodelensProvider';
 import { InferCostItem } from './CustomTypes';
 import { getMethodDeclarations, isExpensiveMethod } from './CommonFunctions';
@@ -15,7 +15,7 @@ let inferCostHistory = new Map<string, InferCostItem[]>();
 let disposables: vscode.Disposable[] = [];
 let activeTextEditor: vscode.TextEditor | undefined;
 
-let codeLensProviderDisposables = new Map();
+let detailCodeLensProviderDisposables = new Map();
 let overviewCodeLensProviderDisposables = new Map();
 
 let webviewOverview: vscode.WebviewPanel | undefined = undefined;
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     updateInferCostHistory();
 
-    createCodeLenses();
+    createDetailCodeLenses();
     createEditorDecorators();
 
     vscode.workspace.getConfiguration("infer-for-vscode").update("executeInfer", true, true);
@@ -67,13 +67,13 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensAction", (methodKey: string) => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensAction", (methodKey: string) => {
     createWebviewHistory(methodKey);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensOverviewAction", (selectedMethodName: string) => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string) => {
     createWebviewOverview(selectedMethodName);
   });
   disposables.push(disposableCommand);
@@ -158,7 +158,7 @@ function updateInferCostHistory() {
   }
 }
 
-function createCodeLenses() {
+function createDetailCodeLenses() {
   if (!inferCost) { return; }
 
   const sourceFileName = activeTextEditor?.document.fileName.split("/").pop();
@@ -171,11 +171,11 @@ function createCodeLenses() {
   overviewCodeLensProviderDisposables.set(sourceFileName, disposable);
   disposables.push(disposable);
 
-  if (codeLensProviderDisposables.has(sourceFileName)) {
-    codeLensProviderDisposables.get(sourceFileName).dispose();
+  if (detailCodeLensProviderDisposables.has(sourceFileName)) {
+    detailCodeLensProviderDisposables.get(sourceFileName).dispose();
   }
-  disposable = vscode.languages.registerCodeLensProvider(docSelector, new CodelensProvider(inferCost));
-  codeLensProviderDisposables.set(sourceFileName, disposable);
+  disposable = vscode.languages.registerCodeLensProvider(docSelector, new DetailCodelensProvider(inferCost));
+  detailCodeLensProviderDisposables.set(sourceFileName, disposable);
   disposables.push(disposable);
 }
 
