@@ -6,6 +6,8 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
+  private document: vscode.TextDocument | undefined;
+
   constructor() {
     vscode.workspace.onDidChangeConfiguration((_) => {
       this._onDidChangeCodeLenses.fire();
@@ -14,6 +16,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
 
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableInfer", false)) {
+      this.document = document;
       const methodDeclarations = getMethodDeclarations(document);
       this.codeLenses = [];
       methodDeclarations.forEach(methodDeclaration => {
@@ -26,10 +29,20 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
 
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
     if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableInfer", false)) {
+      if (!this.document) { return; }
+      const methodDeclarations = getMethodDeclarations(this.document);
+      let selectedMethodName = "";
+      methodDeclarations.some(methodDeclaration => {
+        if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
+          selectedMethodName = methodDeclaration.name;
+          return true;
+        }
+      });
       codeLens.command = {
         title: `Overview`,
         tooltip: "Tooltip provided by Infer for VSCode extension",
-        command: "infer-for-vscode.codelensOverviewAction"
+        command: "infer-for-vscode.codelensOverviewAction",
+        arguments: [selectedMethodName]
       };
       return codeLens;
     }

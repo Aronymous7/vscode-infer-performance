@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 
 export interface InferCostItem {
-  id: string;   // `${full file path}:${method name}`
+  id: string;           // `${full file path}:${method name}`
   method_name: string;
+  timestamp?: string;   // used for cost history
   loc: {
     file: string;
     lnum: number;

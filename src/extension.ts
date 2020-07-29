@@ -73,8 +73,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensOverviewAction", () => {
-    createWebviewOverview();
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.codelensOverviewAction", (selectedMethodName: string) => {
+    createWebviewOverview(selectedMethodName);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -141,13 +141,19 @@ function executeInferOnCurrentFile() {
 
 function updateInferCostHistory() {
   if (!inferCost) { return; }
+
+  let currentTime = new Date().toLocaleString('en-US', { hour12: false });
   for (const inferCostItem of inferCost) {
     let costHistory: InferCostItem[] | undefined = [];
     if (inferCostHistory.has(inferCostItem.id)) {
       costHistory = inferCostHistory.get(inferCostItem.id);
     }
     if (!costHistory) { return; }
-    costHistory.push(inferCostItem);
+    if ((costHistory.length > 0) && (costHistory[0].exec_cost.polynomial === inferCostItem.exec_cost.polynomial)) {
+      continue;
+    }
+    inferCostItem.timestamp = currentTime;
+    costHistory.unshift(inferCostItem);
     inferCostHistory.set(inferCostItem.id, costHistory);
   }
 }
@@ -202,7 +208,7 @@ function createEditorDecorators() {
   activeTextEditor.setDecorations(methodNameDecorationTypeExpensive, methodNameDecorationsExpensive);
 }
 
-function createWebviewOverview() {
+function createWebviewOverview(selectedMethodName: string) {
   if (!inferCost) { return; }
 
   if (webviewOverview) {
@@ -220,7 +226,7 @@ function createWebviewOverview() {
   let inferCostOverviewHtmlString = "";
   for (let inferCostItem of inferCost) {
     if (inferCostItem.method_name === '<init>') { continue; }
-    inferCostOverviewHtmlString += `<div>
+    inferCostOverviewHtmlString += `<div${inferCostItem.method_name === selectedMethodName ? ' class="selected-method"' : ''}>
 <h2>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
 <div>Allocation cost: ${inferCostItem.alloc_cost.polynomial} : ${inferCostItem.alloc_cost.big_o}</div>
 <div>Execution cost: ${inferCostItem.exec_cost.polynomial} : ${inferCostItem.exec_cost.big_o}</div>
@@ -234,10 +240,16 @@ function createWebviewOverview() {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infer Cost Overview</title>
+  <style>
+.selected-method {
+  background-color: rgba(200, 200, 0, 0.2);
+}
+  </style>
 </head>
 <body>
   <h1>Infer Cost Overview</h1>
   <div>
+    <hr>
     ${inferCostOverviewHtmlString}
   <div>
 </body>
@@ -264,7 +276,7 @@ function createWebviewHistory(methodKey: string) {
   let inferCostHistoryHtmlString = ``;
   for (let costHistoryItem of costHistory) {
     inferCostHistoryHtmlString += `<div>
-<h2>${costHistoryItem.method_name} (line ${costHistoryItem.loc.lnum})</h2>
+<h2>${costHistoryItem.timestamp + (costHistoryItem === costHistory[0] ? ' (most recent)' : '')}</h2>
 <div>Allocation cost: ${costHistoryItem.alloc_cost.polynomial} : ${costHistoryItem.alloc_cost.big_o}</div>
 <div>Execution cost: ${costHistoryItem.exec_cost.polynomial} : ${costHistoryItem.exec_cost.big_o}</div>
 </div>
@@ -279,8 +291,9 @@ function createWebviewHistory(methodKey: string) {
   <title>Infer Cost History</title>
 </head>
 <body>
-  <h1>Infer Cost History for: ${costHistory[0].method_name}</h1>
+  <h1>Infer Cost History for: ${costHistory[0].method_name} (line ${costHistory[0].loc.lnum})</h1>
   <div>
+    <hr>
     ${inferCostHistoryHtmlString}
   <div>
 </body>
