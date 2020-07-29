@@ -46,16 +46,16 @@ export function activate(context: vscode.ExtensionContext) {
   console.log('Congratulations, your extension "infer-for-vscode" is now active!');
 
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
+    vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
     activeTextEditor = vscode.window.activeTextEditor;
     inferCost = executeInferOnCurrentFile();
     if (!inferCost) { return; }
 
     updateInferCostHistory();
 
-    createDetailCodeLenses();
+    createCodeLenses();
     createEditorDecorators();
 
-    vscode.workspace.getConfiguration("infer-for-vscode").update("executeInfer", true, true);
     vscode.window.showInformationMessage('Infer has been executed.');
   });
   disposables.push(disposableCommand);
@@ -158,7 +158,7 @@ function updateInferCostHistory() {
   }
 }
 
-function createDetailCodeLenses() {
+function createCodeLenses() {
   if (!inferCost) { return; }
 
   const sourceFileName = activeTextEditor?.document.fileName.split("/").pop();

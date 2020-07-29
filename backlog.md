@@ -3,6 +3,7 @@
 ## General
 
 - Re-execute Infer when code (within respective method) changes significantly
+- Provide command to disable all the CodeLenses, decorations and webviews
 
 ## Editor Decorator
 
@@ -19,3 +20,4 @@
 ## Webview
 
 - Make more secure against injections
+- Only re-create when Infer cost has changed, otherwise reveal existing one
