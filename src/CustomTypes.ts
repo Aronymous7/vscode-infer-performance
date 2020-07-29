@@ -1,30 +1,21 @@
 import * as vscode from 'vscode';
 
 export interface InferCostItem {
-  hash: string;
+  id: string;   // `${full file path}:${method name}`
+  method_name: string;
   loc: {
     file: string;
     lnum: number;
-    cnum: number;
-    enum: number;
   };
-  procedure_name: string;
-  procedure_id: string;
   alloc_cost: {
     polynomial: string;
-    hum: {
-      hum_polynomial: string;
-      hum_degree: number;
-      big_o: string;
-    };
+    degree: number;
+    big_o: string;
   };
   exec_cost: {
     polynomial: string;
-    hum: {
-      hum_polynomial: string;
-      hum_degree: number;
-      big_o: string;
-    };
+    degree: number;
+    big_o: string;
   };
 }
 

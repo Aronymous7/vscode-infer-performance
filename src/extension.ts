@@ -45,26 +45,17 @@ export function activate(context: vscode.ExtensionContext) {
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "infer-for-vscode" is now active!');
 
-  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", () => {
+  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
     activeTextEditor = vscode.window.activeTextEditor;
     inferCost = executeInferOnCurrentFile();
     if (!inferCost) { return; }
 
-    for (const inferCostItem of inferCost) {
-      let costHistory: InferCostItem[] | undefined = [];
-      if (inferCostHistory.has(`${activeTextEditor?.document.fileName}:${inferCostItem.procedure_name}`)) {
-        costHistory = inferCostHistory.get(`${activeTextEditor?.document.fileName}:${inferCostItem.procedure_name}`);
-      }
-      if (!costHistory) { return; }
-      costHistory.push(inferCostItem);
-      inferCostHistory.set(`${activeTextEditor?.document.fileName}:${inferCostItem.procedure_name}`, costHistory);
-    }
+    updateInferCostHistory();
 
     createCodeLenses();
-    createOverviewCodeLenses();
     createEditorDecorators();
 
-    vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
+    vscode.workspace.getConfiguration("infer-for-vscode").update("executeInfer", true, true);
     vscode.window.showInformationMessage('Infer has been executed.');
   });
   disposables.push(disposableCommand);
@@ -111,10 +102,30 @@ function executeInferOnCurrentFile() {
   const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
   childProcess.execSync(`infer --cost -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
 
-  let inferCost: InferCostItem[];
+  let inferCost: InferCostItem[] = [];
   try {
     const inferCostJsonString = fs.readFileSync(`${inferOutputDirectory}/${sourceFileName}/costs-report.json`);
-    inferCost = JSON.parse(inferCostJsonString);
+    let inferCostRaw = JSON.parse(inferCostJsonString);
+    for (let inferCostRawItem of inferCostRaw) {
+      inferCost.push({
+        id: `${sourceFilePath}:${inferCostRawItem.procedure_name}`,
+        method_name: inferCostRawItem.procedure_name,
+        loc: {
+          file: inferCostRawItem.loc.file,
+          lnum: inferCostRawItem.loc.lnum
+        },
+        alloc_cost: {
+          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial,
+          degree: inferCostRawItem.alloc_cost.hum.hum_degree,
+          big_o: inferCostRawItem.alloc_cost.hum.big_o
+        },
+        exec_cost: {
+          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial,
+          degree: inferCostRawItem.exec_cost.hum.hum_degree,
+          big_o: inferCostRawItem.exec_cost.hum.big_o
+        }
+      });
+    }
   } catch (err) {
     console.log(err);
     console.log("InferCost file could not be read.");
@@ -128,29 +139,37 @@ function executeInferOnCurrentFile() {
   return inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
 }
 
+function updateInferCostHistory() {
+  if (!inferCost) { return; }
+  for (const inferCostItem of inferCost) {
+    let costHistory: InferCostItem[] | undefined = [];
+    if (inferCostHistory.has(inferCostItem.id)) {
+      costHistory = inferCostHistory.get(inferCostItem.id);
+    }
+    if (!costHistory) { return; }
+    costHistory.push(inferCostItem);
+    inferCostHistory.set(inferCostItem.id, costHistory);
+  }
+}
+
 function createCodeLenses() {
   if (!inferCost) { return; }
 
   const sourceFileName = activeTextEditor?.document.fileName.split("/").pop();
   const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
-  if (codeLensProviderDisposables.has(sourceFileName)) {
-    codeLensProviderDisposables.get(sourceFileName).dispose();
-  }
-  let disposable = vscode.languages.registerCodeLensProvider(docSelector, new CodelensProvider(inferCost));
-  codeLensProviderDisposables.set(sourceFileName, disposable);
-  disposables.push(disposable);
-}
 
-function createOverviewCodeLenses() {
-  if (!inferCost) { return; }
-
-  const sourceFileName = activeTextEditor?.document.fileName.split("/").pop();
-  const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
   if (overviewCodeLensProviderDisposables.has(sourceFileName)) {
     overviewCodeLensProviderDisposables.get(sourceFileName).dispose();
   }
   let disposable = vscode.languages.registerCodeLensProvider(docSelector, new OverviewCodelensProvider());
   overviewCodeLensProviderDisposables.set(sourceFileName, disposable);
+  disposables.push(disposable);
+
+  if (codeLensProviderDisposables.has(sourceFileName)) {
+    codeLensProviderDisposables.get(sourceFileName).dispose();
+  }
+  disposable = vscode.languages.registerCodeLensProvider(docSelector, new CodelensProvider(inferCost));
+  codeLensProviderDisposables.set(sourceFileName, disposable);
   disposables.push(disposable);
 }
 
@@ -165,11 +184,11 @@ function createEditorDecorators() {
   const methodNameDecorationsExpensive: vscode.DecorationOptions[] = [];
   for (let inferCostItem of inferCost) {
     methodDeclarations.some(methodDeclaration => {
-      if (inferCostItem.procedure_name === methodDeclaration.name) {
+      if (inferCostItem.method_name === methodDeclaration.name) {
         const declarationDecoration = { range: methodDeclaration.declarationRange };
-        const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.hum.hum_polynomial} -- ${inferCostItem.exec_cost.hum.big_o}` };
+        const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.polynomial} -- ${inferCostItem.exec_cost.big_o}` };
         methodDeclarationDecorations.push(declarationDecoration);
-        if (isExpensiveMethod(inferCostItem.procedure_name, inferCost)) {
+        if (isExpensiveMethod(inferCostItem.method_name, inferCost)) {
           methodNameDecorationsExpensive.push(nameDecoration);
         } else {
           methodNameDecorations.push(nameDecoration);
@@ -200,11 +219,11 @@ function createWebviewOverview() {
 
   let inferCostOverviewHtmlString = "";
   for (let inferCostItem of inferCost) {
-    if (inferCostItem.procedure_name === '<init>') { continue; }
+    if (inferCostItem.method_name === '<init>') { continue; }
     inferCostOverviewHtmlString += `<div>
-<h2>${inferCostItem.procedure_name} (line ${inferCostItem.loc.lnum})</h2>
-<div>Allocation cost: ${inferCostItem.alloc_cost.hum.hum_polynomial} : ${inferCostItem.alloc_cost.hum.big_o}</div>
-<div>Execution cost: ${inferCostItem.exec_cost.hum.hum_polynomial} : ${inferCostItem.exec_cost.hum.big_o}</div>
+<h2>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
+<div>Allocation cost: ${inferCostItem.alloc_cost.polynomial} : ${inferCostItem.alloc_cost.big_o}</div>
+<div>Execution cost: ${inferCostItem.exec_cost.polynomial} : ${inferCostItem.exec_cost.big_o}</div>
 </div>
 <hr>`;
   }
@@ -245,9 +264,9 @@ function createWebviewHistory(methodKey: string) {
   let inferCostHistoryHtmlString = ``;
   for (let costHistoryItem of costHistory) {
     inferCostHistoryHtmlString += `<div>
-<h2>${costHistoryItem.procedure_name} (line ${costHistoryItem.loc.lnum})</h2>
-<div>Allocation cost: ${costHistoryItem.alloc_cost.hum.hum_polynomial} : ${costHistoryItem.alloc_cost.hum.big_o}</div>
-<div>Execution cost: ${costHistoryItem.exec_cost.hum.hum_polynomial} : ${costHistoryItem.exec_cost.hum.big_o}</div>
+<h2>${costHistoryItem.method_name} (line ${costHistoryItem.loc.lnum})</h2>
+<div>Allocation cost: ${costHistoryItem.alloc_cost.polynomial} : ${costHistoryItem.alloc_cost.big_o}</div>
+<div>Execution cost: ${costHistoryItem.exec_cost.polynomial} : ${costHistoryItem.exec_cost.big_o}</div>
 </div>
 <hr>`;
   }
@@ -260,7 +279,7 @@ function createWebviewHistory(methodKey: string) {
   <title>Infer Cost History</title>
 </head>
 <body>
-  <h1>Infer Cost History for: ${costHistory[0].procedure_name}</h1>
+  <h1>Infer Cost History for: ${costHistory[0].method_name}</h1>
   <div>
     ${inferCostHistoryHtmlString}
   <div>

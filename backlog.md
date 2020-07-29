@@ -10,11 +10,12 @@
 
 ## Code Lenses
 
-- Show details when clicking on CodeLens
-- History of runtimes after code changes
+- Show webview (overview and history) when clicking on CodeLens
+  - Highlight current or most recent method in webview
+- History of runtimes after each execution of Infer
   - Give option to persist history between sessions
+  - Only create new history entry for method if code/cost changed
 
 ## Webview
 
 - Make more secure against injections
-- Show detailed webview when clicking on CodeLens

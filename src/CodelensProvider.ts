@@ -44,7 +44,7 @@ export class CodelensProvider implements vscode.CodeLensProvider {
       });
       let currentInferCostItem: InferCostItem | undefined;
       for (let inferCostItem of this.inferCost) {
-        if (inferCostItem.procedure_name === methodName) {
+        if (inferCostItem.method_name === methodName) {
           currentInferCostItem = inferCostItem;
           break;
         }
@@ -54,10 +54,10 @@ export class CodelensProvider implements vscode.CodeLensProvider {
         return;
       }
       codeLens.command = {
-        title: `Execution cost: ${currentInferCostItem.exec_cost.hum.hum_polynomial} -- ${currentInferCostItem.exec_cost.hum.big_o} (click for history)`,
+        title: `Execution cost: ${currentInferCostItem.exec_cost.polynomial} -- ${currentInferCostItem.exec_cost.big_o}`,
         tooltip: "Tooltip provided by Infer for VSCode extension",
         command: "infer-for-vscode.codelensAction",
-        arguments: [`${this.document.fileName}:${methodName}`]
+        arguments: [currentInferCostItem.id]
       };
       return codeLens;
     }

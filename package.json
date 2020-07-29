@@ -18,14 +18,14 @@
     "Java"
   ],
   "activationEvents": [
-    "onCommand:infer-for-vscode.enableInfer"
+    "onCommand:infer-for-vscode.executeInfer"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "infer-for-vscode.enableInfer",
-        "title": "Enable Infer",
+        "command": "infer-for-vscode.executeInfer",
+        "title": "Execute Infer",
         "category": "Infer"
       },
       {

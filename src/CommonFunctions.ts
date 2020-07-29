@@ -33,10 +33,10 @@ export function isExpensiveMethod(methodName: string, inferCost: InferCostItem[]
     executionCost: 0
   };
   for (let inferCostItem of inferCost) {
-    if (+inferCostItem.exec_cost.hum.hum_degree === 0 && +inferCostItem.exec_cost.hum.hum_polynomial > mostExpensiveConstantMethod.executionCost) {
+    if (+inferCostItem.exec_cost.degree === 0 && +inferCostItem.exec_cost.polynomial > mostExpensiveConstantMethod.executionCost) {
       mostExpensiveConstantMethod = {
-        name: inferCostItem.procedure_name,
-        executionCost: +inferCostItem.exec_cost.hum.hum_polynomial
+        name: inferCostItem.method_name,
+        executionCost: +inferCostItem.exec_cost.polynomial
       };
     }
   }
