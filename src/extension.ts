@@ -9,8 +9,9 @@ const fs = require('fs');
 
 const inferOutputDirectory = '/tmp/infer-out';
 
-let inferCost: InferCostItem[] = [];
-let inferCostHistory = new Map<string, InferCostItem[]>();    // [inferCostItem.id, costHistory]
+let currentInferCost: InferCostItem[];
+let inferCosts = new Map<vscode.TextDocument, InferCostItem[]>();   // [document, inferCost]
+let inferCostHistories = new Map<string, InferCostItem[]>();        // [inferCostItem.id, costHistory]
 
 let disposables: vscode.Disposable[] = [];
 let activeTextEditor: vscode.TextEditor;
@@ -41,11 +42,16 @@ export function activate(context: vscode.ExtensionContext) {
       initializeDecorationTypes();
     }
 
-    let tmpActiveTextEditor = vscode.window.activeTextEditor;
-    if (tmpActiveTextEditor) { activeTextEditor = tmpActiveTextEditor; } else { return; }
+    const tmpActiveTextEditor = vscode.window.activeTextEditor;
+    if (tmpActiveTextEditor) {
+      activeTextEditor = tmpActiveTextEditor;
+    } else { return; }
 
-    let tmpInferCost = executeInferOnCurrentFile();
-    if (tmpInferCost) { inferCost = tmpInferCost; } else { return; }
+    const tmpInferCost = executeInferOnCurrentFile();
+    if (tmpInferCost) {
+      currentInferCost = tmpInferCost;
+      inferCosts.set(activeTextEditor.document, tmpInferCost);
+    } else { return; }
 
     updateInferCostHistory();
 
@@ -69,16 +75,20 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string) => {
-    createWebviewOverview(selectedMethodName);
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (document: vscode.TextDocument, selectedMethodName: string) => {
+    createWebviewOverview(document, selectedMethodName);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
   vscode.window.onDidChangeActiveTextEditor(editor => {
-    if (activeTextEditor.document === editor?.document) {
+    if (editor) {
       activeTextEditor = editor;
-      createEditorDecorators();
+      const tmpInferCost = inferCosts.get(activeTextEditor.document);
+      if (tmpInferCost) {
+        currentInferCost = tmpInferCost;
+        createEditorDecorators();
+      }
     }
   }, null, context.subscriptions);
 
@@ -198,10 +208,10 @@ function executeInferOnCurrentFile() {
 
 function updateInferCostHistory() {
   let currentTime = new Date().toLocaleString('en-US', { hour12: false });
-  for (const inferCostItem of inferCost) {
+  for (const inferCostItem of currentInferCost) {
     let costHistory: InferCostItem[] | undefined = [];
-    if (inferCostHistory.has(inferCostItem.id)) {
-      costHistory = inferCostHistory.get(inferCostItem.id);
+    if (inferCostHistories.has(inferCostItem.id)) {
+      costHistory = inferCostHistories.get(inferCostItem.id);
     }
     if (!costHistory) { return; }
     if ((costHistory.length > 0) && (costHistory[0].exec_cost.polynomial === inferCostItem.exec_cost.polynomial)) {
@@ -209,7 +219,7 @@ function updateInferCostHistory() {
     }
     inferCostItem.timestamp = currentTime;
     costHistory.unshift(inferCostItem);
-    inferCostHistory.set(inferCostItem.id, costHistory);
+    inferCostHistories.set(inferCostItem.id, costHistory);
   }
 }
 
@@ -218,32 +228,28 @@ function createCodeLenses() {
   const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
   if (!sourceFileName) { return; }
 
-  if (overviewCodeLensProviderDisposables.has(sourceFileName)) {
-    overviewCodeLensProviderDisposables.get(sourceFileName)?.dispose();
-  }
+  overviewCodeLensProviderDisposables.get(sourceFileName)?.dispose();
   let codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new OverviewCodelensProvider());
   overviewCodeLensProviderDisposables.set(sourceFileName, codeLensProviderDisposable);
 
-  if (detailCodeLensProviderDisposables.has(sourceFileName)) {
-    detailCodeLensProviderDisposables.get(sourceFileName)?.dispose();
-  }
-  codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new DetailCodelensProvider(inferCost));
+  detailCodeLensProviderDisposables.get(sourceFileName)?.dispose();
+  codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new DetailCodelensProvider(currentInferCost));
   detailCodeLensProviderDisposables.set(sourceFileName, codeLensProviderDisposable);
 }
 
 function createEditorDecorators() {
-  const document = activeTextEditor.document;
-  const methodDeclarations = getMethodDeclarations(document);
+  const methodDeclarations = getMethodDeclarations(activeTextEditor.document);
+
   const methodDeclarationDecorations: vscode.DecorationOptions[] = [];
   const methodNameDecorations: vscode.DecorationOptions[] = [];
   const methodNameDecorationsExpensive: vscode.DecorationOptions[] = [];
-  for (let inferCostItem of inferCost) {
+  for (let inferCostItem of currentInferCost) {
     methodDeclarations.some(methodDeclaration => {
       if (inferCostItem.method_name === methodDeclaration.name) {
         const declarationDecoration = { range: methodDeclaration.declarationRange };
         const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.polynomial} -- ${inferCostItem.exec_cost.big_o}` };
         methodDeclarationDecorations.push(declarationDecoration);
-        if (isExpensiveMethod(inferCostItem.method_name, inferCost)) {
+        if (isExpensiveMethod(inferCostItem.method_name, currentInferCost)) {
           methodNameDecorationsExpensive.push(nameDecoration);
         } else {
           methodNameDecorations.push(nameDecoration);
@@ -257,7 +263,7 @@ function createEditorDecorators() {
   activeTextEditor.setDecorations(methodNameDecorationTypeExpensive, methodNameDecorationsExpensive);
 }
 
-function createWebviewOverview(selectedMethodName: string) {
+function createWebviewOverview(document: vscode.TextDocument, selectedMethodName: string) {
   if (webviewOverview) {
     webviewOverview.dispose();
   }
@@ -271,7 +277,7 @@ function createWebviewOverview(selectedMethodName: string) {
   );
 
   let inferCostOverviewHtmlString = "";
-  for (let inferCostItem of inferCost) {
+  for (let inferCostItem of currentInferCost) {
     if (inferCostItem.method_name === '<init>') { continue; }
     inferCostOverviewHtmlString += `<div${inferCostItem.method_name === selectedMethodName ? ' class="selected-method"' : ''}>
 <h2>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
@@ -316,7 +322,7 @@ function createWebviewHistory(methodKey: string) {
     {localResourceRoots: []} // Webview options.
   );
 
-  const costHistory = inferCostHistory.get(methodKey);
+  const costHistory = inferCostHistories.get(methodKey);
   if (!costHistory || costHistory.length <= 0) { return; }
   let inferCostHistoryHtmlString = ``;
   for (let costHistoryItem of costHistory) {
