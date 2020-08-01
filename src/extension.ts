@@ -10,7 +10,7 @@ const fs = require('fs');
 const inferOutputDirectory = '/tmp/infer-out';
 
 let inferCost: InferCostItem[] = [];
-let inferCostHistory = new Map<string, InferCostItem[]>();
+let inferCostHistory = new Map<string, InferCostItem[]>();    // [inferCostItem.id, costHistory]
 
 let disposables: vscode.Disposable[] = [];
 let activeTextEditor: vscode.TextEditor;
@@ -74,6 +74,19 @@ export function activate(context: vscode.ExtensionContext) {
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
+
+  vscode.window.onDidChangeActiveTextEditor(editor => {
+    if (activeTextEditor.document === editor?.document) {
+      activeTextEditor = editor;
+      createEditorDecorators();
+    }
+  }, null, context.subscriptions);
+
+  vscode.workspace.onDidChangeTextDocument(event => {
+    if (activeTextEditor && event.document === activeTextEditor.document) {
+      createEditorDecorators();
+    }
+  }, null, context.subscriptions);
 }
 
 // this method is called when your extension is deactivated
@@ -253,7 +266,7 @@ function createWebviewOverview(selectedMethodName: string) {
   webviewOverview = vscode.window.createWebviewPanel(
     'inferCostOverview', // Identifies the type of the webview. Used internally
     'Infer Cost Overview', // Title of the panel displayed to the user
-    vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
+    {viewColumn: vscode.ViewColumn.Two, preserveFocus: true}, // Editor column to show the new webview panel in.
     {localResourceRoots: []} // Webview options.
   );
 
@@ -299,7 +312,7 @@ function createWebviewHistory(methodKey: string) {
   webviewHistory = vscode.window.createWebviewPanel(
     'inferCostHistory', // Identifies the type of the webview. Used internally
     'Infer Cost History', // Title of the panel displayed to the user
-    vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
+    {viewColumn: vscode.ViewColumn.Two, preserveFocus: true}, // Editor column to show the new webview panel in.
     {localResourceRoots: []} // Webview options.
   );
 
