@@ -4,10 +4,12 @@
 
 - Re-execute Infer when code (within respective method) changes significantly
 - Provide command to disable all the CodeLenses, decorations and webviews
+- Test Infer execution time on large code base
 
 ## Editor Decorator
 
-- Show runtime to the right of method
+- Color coding for significant changes in cost
+- Interactive coloring (e.g. when an expensive method cannot be made cheaper -> color in green)
 
 ## Code Lenses
 
@@ -16,6 +18,7 @@
 - History of runtimes after each execution of Infer
   - Give option to persist history between sessions
   - Only create new history entry for method if code/cost changed
+- Show significant changes in cost immediately in CodeLens (maybe with color coding, warning messages, etc.)
 
 ## Webview
 

@@ -18,7 +18,7 @@
     "Java"
   ],
   "activationEvents": [
-    "onCommand:infer-for-vscode.executeInfer"
+    "*"
   ],
   "main": "./out/extension.js",
   "contributes": {

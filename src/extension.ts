@@ -9,35 +9,24 @@ const fs = require('fs');
 
 const inferOutputDirectory = '/tmp/infer-out';
 
-let inferCost: InferCostItem[] | undefined = [];
+let inferCost: InferCostItem[] = [];
 let inferCostHistory = new Map<string, InferCostItem[]>();
 
 let disposables: vscode.Disposable[] = [];
-let activeTextEditor: vscode.TextEditor | undefined;
+let activeTextEditor: vscode.TextEditor;
 
-let detailCodeLensProviderDisposables = new Map();
-let overviewCodeLensProviderDisposables = new Map();
+// [sourceFileName, codeLensDisposable]
+let overviewCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
+let detailCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
 
-let webviewOverview: vscode.WebviewPanel | undefined = undefined;
-let webviewHistory: vscode.WebviewPanel | undefined = undefined;
+let webviewOverview: vscode.WebviewPanel;
+let webviewHistory: vscode.WebviewPanel;
 
 // Decorator types that we use to decorate method declarations
-const methodDeclarationDecorationType = vscode.window.createTextEditorDecorationType({
-  after: {
-    contentText: ' (cost could be displayed here as well)',
-    color: 'rgba(50, 200, 50, 0.5)'
-  }
-});
-const methodNameDecorationType = vscode.window.createTextEditorDecorationType({
-  backgroundColor: 'rgba(150, 255, 10, 0.5)',
-  overviewRulerColor: 'rgba(150, 250, 50, 1)',
-  overviewRulerLane: vscode.OverviewRulerLane.Right,
-});
-const methodNameDecorationTypeExpensive = vscode.window.createTextEditorDecorationType({
-  backgroundColor: 'rgba(255, 0, 0, 0.7)',
-  overviewRulerColor: '#ff0000',
-  overviewRulerLane: vscode.OverviewRulerLane.Right,
-});
+let methodDeclarationDecorationType: vscode.TextEditorDecorationType;
+let methodNameDecorationType: vscode.TextEditorDecorationType;
+let methodNameDecorationTypeExpensive: vscode.TextEditorDecorationType;
+let areDecorationTypesSet: boolean = false;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -47,9 +36,16 @@ export function activate(context: vscode.ExtensionContext) {
 
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
     vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
-    activeTextEditor = vscode.window.activeTextEditor;
-    inferCost = executeInferOnCurrentFile();
-    if (!inferCost) { return; }
+
+    if (!areDecorationTypesSet) {
+      initializeDecorationTypes();
+    }
+
+    let tmpActiveTextEditor = vscode.window.activeTextEditor;
+    if (tmpActiveTextEditor) { activeTextEditor = tmpActiveTextEditor; } else { return; }
+
+    let tmpInferCost = executeInferOnCurrentFile();
+    if (tmpInferCost) { inferCost = tmpInferCost; } else { return; }
 
     updateInferCostHistory();
 
@@ -62,7 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disableInfer", () => {
-    vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", false, true);
+    disableInfer();
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -86,15 +82,63 @@ export function deactivate() {
     let inferOut = vscode.Uri.file(inferOutputDirectory);
     vscode.workspace.fs.delete(inferOut, {recursive: true});
   }
+  disableInfer();
   if (disposables) {
     disposables.forEach(item => item.dispose());
   }
   disposables = [];
 }
 
+function disableInfer() {
+  vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", false, true);
+
+  if (areDecorationTypesSet) {
+    methodDeclarationDecorationType.dispose();
+    methodNameDecorationType.dispose();
+    methodNameDecorationTypeExpensive.dispose();
+
+    areDecorationTypesSet = false;
+  }
+
+  for (const codeLensProviderMapEntry of detailCodeLensProviderDisposables) {
+    codeLensProviderMapEntry[1].dispose();
+  }
+  for (const codeLensProviderMapEntry of overviewCodeLensProviderDisposables) {
+    codeLensProviderMapEntry[1].dispose();
+  }
+
+  if (webviewOverview) {
+    webviewOverview.dispose();
+  }
+  if (webviewHistory) {
+    webviewHistory.dispose();
+  }
+}
+
+function initializeDecorationTypes() {
+  methodDeclarationDecorationType = vscode.window.createTextEditorDecorationType({
+    after: {
+      contentText: ' (warn about significant changes here)',
+      color: '#ff0000'
+    }
+  });
+  methodNameDecorationType = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(150, 255, 10, 0.5)',
+    overviewRulerColor: 'rgba(150, 250, 50, 1)',
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
+  });
+  methodNameDecorationTypeExpensive = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(255, 0, 0, 0.7)',
+    overviewRulerColor: '#ff0000',
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
+  });
+
+  areDecorationTypesSet = true;
+}
+
 function executeInferOnCurrentFile() {
-  const sourceFilePath = activeTextEditor?.document.fileName;
-  if (!sourceFilePath?.endsWith(".java")) {
+  const sourceFilePath = activeTextEditor.document.fileName;
+  if (!sourceFilePath.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
     console.log("Tried to execute Infer on non-Java file.");
     return undefined;
@@ -140,8 +184,6 @@ function executeInferOnCurrentFile() {
 }
 
 function updateInferCostHistory() {
-  if (!inferCost) { return; }
-
   let currentTime = new Date().toLocaleString('en-US', { hour12: false });
   for (const inferCostItem of inferCost) {
     let costHistory: InferCostItem[] | undefined = [];
@@ -159,30 +201,24 @@ function updateInferCostHistory() {
 }
 
 function createCodeLenses() {
-  if (!inferCost) { return; }
-
-  const sourceFileName = activeTextEditor?.document.fileName.split("/").pop();
+  const sourceFileName = activeTextEditor.document.fileName.split("/").pop();
   const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
+  if (!sourceFileName) { return; }
 
   if (overviewCodeLensProviderDisposables.has(sourceFileName)) {
-    overviewCodeLensProviderDisposables.get(sourceFileName).dispose();
+    overviewCodeLensProviderDisposables.get(sourceFileName)?.dispose();
   }
-  let disposable = vscode.languages.registerCodeLensProvider(docSelector, new OverviewCodelensProvider());
-  overviewCodeLensProviderDisposables.set(sourceFileName, disposable);
-  disposables.push(disposable);
+  let codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new OverviewCodelensProvider());
+  overviewCodeLensProviderDisposables.set(sourceFileName, codeLensProviderDisposable);
 
   if (detailCodeLensProviderDisposables.has(sourceFileName)) {
-    detailCodeLensProviderDisposables.get(sourceFileName).dispose();
+    detailCodeLensProviderDisposables.get(sourceFileName)?.dispose();
   }
-  disposable = vscode.languages.registerCodeLensProvider(docSelector, new DetailCodelensProvider(inferCost));
-  detailCodeLensProviderDisposables.set(sourceFileName, disposable);
-  disposables.push(disposable);
+  codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new DetailCodelensProvider(inferCost));
+  detailCodeLensProviderDisposables.set(sourceFileName, codeLensProviderDisposable);
 }
 
 function createEditorDecorators() {
-  if (!inferCost) { return; }
-  if (!activeTextEditor) { return; }
-
   const document = activeTextEditor.document;
   const methodDeclarations = getMethodDeclarations(document);
   const methodDeclarationDecorations: vscode.DecorationOptions[] = [];
@@ -209,8 +245,6 @@ function createEditorDecorators() {
 }
 
 function createWebviewOverview(selectedMethodName: string) {
-  if (!inferCost) { return; }
-
   if (webviewOverview) {
     webviewOverview.dispose();
   }
@@ -257,8 +291,6 @@ function createWebviewOverview(selectedMethodName: string) {
 }
 
 function createWebviewHistory(methodKey: string) {
-  if (!inferCost) { return; }
-
   if (webviewHistory) {
     webviewHistory.dispose();
   }
