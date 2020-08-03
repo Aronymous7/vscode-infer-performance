@@ -2,8 +2,6 @@
 
 ## General
 
-- Re-execute Infer when code (within respective method) changes significantly
-  - When loops or method calls get added (with exceptions like println)
 - Test Infer execution time on large code base
 
 ## Editor Decorator

@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
+import * as Constants from './Constants';
 import { InferCostItem, MethodDeclaration } from './CustomTypes';
 
 export function getMethodDeclarations(document: vscode.TextDocument) {
-  const regex = new RegExp(/(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+(?:[\w\<\>\[\]]+)\s+(\w+) *\([^\)]*\) *(?:\{(.*\})?|;)?/g);
+  const regex = new RegExp(Constants.METHOD_DECLARATION_REGEX);
   const text = document.getText();
   let methodDeclarations: MethodDeclaration[] = [];
   let matches;

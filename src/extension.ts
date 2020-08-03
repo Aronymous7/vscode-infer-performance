@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as Constants from './Constants';
 import { DetailCodelensProvider } from './DetailCodelensProvider';
 import { OverviewCodelensProvider } from './OverviewCodelensProvider';
 import { InferCostItem, LineDiff } from './CustomTypes';
@@ -7,8 +8,6 @@ import { getMethodDeclarations, isExpensiveMethod } from './CommonFunctions';
 const childProcess = require('child_process');
 const fs = require('fs');
 const Diff = require('diff');
-
-const inferOutputDirectory = '/tmp/infer-out';
 
 let currentInferCost: InferCostItem[];
 let inferCosts = new Map<vscode.TextDocument, InferCostItem[]>();   // [document, inferCost]
@@ -95,8 +94,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 // this method is called when your extension is deactivated
 export function deactivate() {
-  if (fs.existsSync(inferOutputDirectory)) {
-    let inferOut = vscode.Uri.file(inferOutputDirectory);
+  if (fs.existsSync(Constants.INFER_OUTPUT_DIRECTORY)) {
+    let inferOut = vscode.Uri.file(Constants.INFER_OUTPUT_DIRECTORY);
     vscode.workspace.fs.delete(inferOut, {recursive: true});
   }
   disableInfer();
@@ -185,7 +184,7 @@ function executeInferOnCurrentFile(isManualCall: boolean) {
   }
   const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
   try {
-    childProcess.execSync(`infer --cost-only -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
+    childProcess.execSync(`infer --cost-only -o ${Constants.INFER_OUTPUT_DIRECTORY}/${sourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
     if (isManualCall) {
       vscode.window.showErrorMessage("Execution of Infer failed (probably due to compilation error).");
@@ -198,7 +197,7 @@ function executeInferOnCurrentFile(isManualCall: boolean) {
 
   let inferCost: InferCostItem[] = [];
   try {
-    const inferCostJsonString = fs.readFileSync(`${inferOutputDirectory}/${sourceFileName}/costs-report.json`);
+    const inferCostJsonString = fs.readFileSync(`${Constants.INFER_OUTPUT_DIRECTORY}/${sourceFileName}/costs-report.json`);
     let inferCostRaw = JSON.parse(inferCostJsonString);
     for (let inferCostRawItem of inferCostRaw) {
       inferCost.push({
@@ -225,8 +224,8 @@ function executeInferOnCurrentFile(isManualCall: boolean) {
     console.log("InferCost file could not be read.");
     return undefined;
   } finally {
-    if (fs.existsSync(`${inferOutputDirectory}/${sourceFileName}`)) {
-      let inferOut = vscode.Uri.file(`${inferOutputDirectory}/${sourceFileName}`);
+    if (fs.existsSync(`${Constants.INFER_OUTPUT_DIRECTORY}/${sourceFileName}`)) {
+      let inferOut = vscode.Uri.file(`${Constants.INFER_OUTPUT_DIRECTORY}/${sourceFileName}`);
       vscode.workspace.fs.delete(inferOut, {recursive: true});
     }
   }
@@ -257,7 +256,7 @@ function isSignificantCodeChange(savedText: string) {
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
   for (let diffTextPart of diffText) {
     if (diffTextPart.hasOwnProperty('added') || diffTextPart.hasOwnProperty('removed')) {
-      if (diffTextPart.value.match(/(while|for|[A-Za-z_$][A-Za-z0-9]*\(.*\))/g)) {
+      if (diffTextPart.value.match(Constants.SIGNIFICANT_CODE_CHANGE_REGEX)) {
         return true;
       }
     }
