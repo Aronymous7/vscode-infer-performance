@@ -75,6 +75,12 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensError", (methodKey: string) => {
+    vscode.window.showInformationMessage("Please save and re-execute Infer.");
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (document: vscode.TextDocument, selectedMethodName: string) => {
     createWebviewOverview(document, selectedMethodName);
   });
@@ -167,7 +173,7 @@ function executeInferOnCurrentFile() {
     return undefined;
   }
   const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
-  childProcess.execSync(`infer --cost -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
+  childProcess.execSync(`infer --cost-only -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
 
   let inferCost: InferCostItem[] = [];
   try {

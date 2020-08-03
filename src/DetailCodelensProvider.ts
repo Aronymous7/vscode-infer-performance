@@ -50,8 +50,11 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         }
       }
       if (!currentInferCostItem) {
-        console.log(`Method with name '${methodName}' could not be found in InferCost array.`);
-        return;
+        codeLens.command = {
+          title: "Method signature changed. Please save and re-execute Infer.",
+          command: "infer-for-vscode.detailCodelensError"
+        };
+        return codeLens;
       }
       codeLens.command = {
         title: `Execution cost: ${currentInferCostItem.exec_cost.polynomial} -- ${currentInferCostItem.exec_cost.big_o}`,
