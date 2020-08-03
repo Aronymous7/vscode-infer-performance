@@ -173,7 +173,12 @@ function executeInferOnCurrentFile() {
     return undefined;
   }
   const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
-  childProcess.execSync(`infer --cost-only -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
+  try {
+    childProcess.execSync(`infer --cost-only -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
+  } catch (err) {
+    console.log("Execution of infer command failed (probably due to compilation error).");
+    return undefined;
+  }
 
   let inferCost: InferCostItem[] = [];
   try {
