@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { DetailCodelensProvider } from './DetailCodelensProvider';
 import { OverviewCodelensProvider } from './OverviewCodelensProvider';
-import { InferCostItem } from './CustomTypes';
+import { InferCostItem, LineDiff } from './CustomTypes';
 import { getMethodDeclarations, isExpensiveMethod } from './CommonFunctions';
 
 const childProcess = require('child_process');
 const fs = require('fs');
+const Diff = require('diff');
 
 const inferOutputDirectory = '/tmp/infer-out';
 
@@ -15,6 +16,7 @@ let inferCostHistories = new Map<string, InferCostItem[]>();        // [inferCos
 
 let disposables: vscode.Disposable[] = [];
 let activeTextEditor: vscode.TextEditor;
+let activeTextEditorTexts = new Map<vscode.TextDocument, string>();
 
 // [sourceFileName, codeLensDisposable]
 let overviewCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
@@ -31,39 +33,18 @@ let areDecorationTypesSet: boolean = false;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
-  // This line of code will only be executed once when your extension is activated
-  console.log('Congratulations, your extension "infer-for-vscode" is now active!');
-
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
     vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
-
-    if (!areDecorationTypesSet) {
-      initializeDecorationTypes();
+    const success = executeInfer(true);
+    if (success) {
+      vscode.window.showInformationMessage('Infer has been executed.');
     }
-
-    const tmpActiveTextEditor = vscode.window.activeTextEditor;
-    if (tmpActiveTextEditor) {
-      activeTextEditor = tmpActiveTextEditor;
-    } else { return; }
-
-    const tmpInferCost = executeInferOnCurrentFile();
-    if (tmpInferCost) {
-      currentInferCost = tmpInferCost;
-      inferCosts.set(activeTextEditor.document, tmpInferCost);
-    } else { return; }
-
-    updateInferCostHistory();
-
-    createCodeLenses();
-    createEditorDecorators();
-
-    vscode.window.showInformationMessage('Infer has been executed.');
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disableInfer", () => {
+    vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", false, true);
     disableInfer();
   });
   disposables.push(disposableCommand);
@@ -103,6 +84,13 @@ export function activate(context: vscode.ExtensionContext) {
       createEditorDecorators();
     }
   }, null, context.subscriptions);
+
+  vscode.workspace.onDidSaveTextDocument(event => {
+    if (isSignificantCodeChange(event.getText())) {
+      vscode.window.showInformationMessage("Re-executing Infer...");
+      executeInfer(false);
+    }
+  }, null, context.subscriptions);
 }
 
 // this method is called when your extension is deactivated
@@ -118,9 +106,32 @@ export function deactivate() {
   disposables = [];
 }
 
-function disableInfer() {
-  vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", false, true);
+function executeInfer(isManualCall: boolean) {
+  if (!areDecorationTypesSet) {
+    initializeDecorationTypes();
+  }
 
+  const tmpActiveTextEditor = vscode.window.activeTextEditor;
+  if (tmpActiveTextEditor) {
+    activeTextEditor = tmpActiveTextEditor;
+    activeTextEditorTexts.set(activeTextEditor.document, activeTextEditor.document.getText());
+  } else { return false; }
+
+  const tmpInferCost = executeInferOnCurrentFile(isManualCall);
+  if (tmpInferCost) {
+    currentInferCost = tmpInferCost;
+    inferCosts.set(activeTextEditor.document, tmpInferCost);
+  } else { return false; }
+
+  updateInferCostHistory();
+
+  createCodeLenses();
+  createEditorDecorators();
+
+  return true;
+}
+
+function disableInfer() {
   if (areDecorationTypesSet) {
     methodDeclarationDecorationType.dispose();
     methodNameDecorationType.dispose();
@@ -165,7 +176,7 @@ function initializeDecorationTypes() {
   areDecorationTypesSet = true;
 }
 
-function executeInferOnCurrentFile() {
+function executeInferOnCurrentFile(isManualCall: boolean) {
   const sourceFilePath = activeTextEditor.document.fileName;
   if (!sourceFilePath.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
@@ -176,6 +187,11 @@ function executeInferOnCurrentFile() {
   try {
     childProcess.execSync(`infer --cost-only -o ${inferOutputDirectory}/${sourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
+    if (isManualCall) {
+      vscode.window.showErrorMessage("Execution of Infer failed (probably due to compilation error).");
+    } else {
+      vscode.window.showErrorMessage("Re-execution of Infer failed (probably due to compilation error).");
+    }
     console.log("Execution of infer command failed (probably due to compilation error).");
     return undefined;
   }
@@ -232,6 +248,21 @@ function updateInferCostHistory() {
     costHistory.unshift(inferCostItem);
     inferCostHistories.set(inferCostItem.id, costHistory);
   }
+}
+
+function isSignificantCodeChange(savedText: string) {
+  const previousText = activeTextEditorTexts.get(activeTextEditor.document);
+  if (!previousText) { return false; }
+
+  const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
+  for (let diffTextPart of diffText) {
+    if (diffTextPart.hasOwnProperty('added') || diffTextPart.hasOwnProperty('removed')) {
+      if (diffTextPart.value.match(/(while|for|[A-Za-z_$][A-Za-z0-9]*\(.*\))/g)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function createCodeLenses() {

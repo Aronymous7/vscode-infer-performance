@@ -25,3 +25,10 @@ export interface MethodDeclaration {
   declarationRange: vscode.Range;
   nameRange: vscode.Range;
 }
+
+export interface LineDiff {
+  count: number;
+  added?: boolean;
+  removed?: boolean;
+  value: string;
+}
