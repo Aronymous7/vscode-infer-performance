@@ -10,14 +10,14 @@ const fs = require('fs');
 const Diff = require('diff');
 
 let currentInferCost: InferCostItem[];
-let inferCosts = new Map<vscode.TextDocument, InferCostItem[]>();   // [document, inferCost]
-let inferCostHistories = new Map<string, InferCostItem[]>();        // [inferCostItem.id, costHistory]
+let inferCosts = new Map<string, InferCostItem[]>();          // [document.fileName, inferCost]
+let inferCostHistories = new Map<string, InferCostItem[]>();  // [inferCostItem.id, costHistory]
 
 let disposables: vscode.Disposable[] = [];
 let activeTextEditor: vscode.TextEditor;
-let activeTextEditorTexts = new Map<vscode.TextDocument, string>();
+let activeTextEditorTexts = new Map<string, string>();        // [document.fileName, text]
 
-// [sourceFileName, codeLensDisposable]
+// [sourceFilePath, codeLensDisposable]
 let overviewCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
 let detailCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
 
@@ -61,8 +61,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (document: vscode.TextDocument, selectedMethodName: string) => {
-    createWebviewOverview(document, selectedMethodName);
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string) => {
+    createWebviewOverview(selectedMethodName);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -70,17 +70,12 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.onDidChangeActiveTextEditor(editor => {
     if (editor) {
       activeTextEditor = editor;
-      const tmpInferCost = inferCosts.get(activeTextEditor.document);
+      console.log(activeTextEditor.document);
+      const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
       if (tmpInferCost) {
         currentInferCost = tmpInferCost;
         createEditorDecorators();
       }
-    }
-  }, null, context.subscriptions);
-
-  vscode.workspace.onDidChangeTextDocument(event => {
-    if (activeTextEditor && event.document === activeTextEditor.document) {
-      createEditorDecorators();
     }
   }, null, context.subscriptions);
 
@@ -113,13 +108,13 @@ function executeInfer(isManualCall: boolean) {
   const tmpActiveTextEditor = vscode.window.activeTextEditor;
   if (tmpActiveTextEditor) {
     activeTextEditor = tmpActiveTextEditor;
-    activeTextEditorTexts.set(activeTextEditor.document, activeTextEditor.document.getText());
+    activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
   } else { return false; }
 
   const tmpInferCost = executeInferOnCurrentFile(isManualCall);
   if (tmpInferCost) {
     currentInferCost = tmpInferCost;
-    inferCosts.set(activeTextEditor.document, tmpInferCost);
+    inferCosts.set(activeTextEditor.document.fileName, tmpInferCost);
   } else { return false; }
 
   updateInferCostHistory();
@@ -250,7 +245,7 @@ function updateInferCostHistory() {
 }
 
 function isSignificantCodeChange(savedText: string) {
-  const previousText = activeTextEditorTexts.get(activeTextEditor.document);
+  const previousText = activeTextEditorTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
 
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
@@ -265,17 +260,16 @@ function isSignificantCodeChange(savedText: string) {
 }
 
 function createCodeLenses() {
-  const sourceFileName = activeTextEditor.document.fileName.split("/").pop();
-  const docSelector: vscode.DocumentSelector = { pattern: `**/${sourceFileName}`, language: 'java' };
-  if (!sourceFileName) { return; }
+  const sourceFilePath = activeTextEditor.document.fileName;
+  const docSelector: vscode.DocumentSelector = { pattern: sourceFilePath, language: 'java' };
 
-  overviewCodeLensProviderDisposables.get(sourceFileName)?.dispose();
+  overviewCodeLensProviderDisposables.get(sourceFilePath)?.dispose();
   let codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new OverviewCodelensProvider());
-  overviewCodeLensProviderDisposables.set(sourceFileName, codeLensProviderDisposable);
+  overviewCodeLensProviderDisposables.set(sourceFilePath, codeLensProviderDisposable);
 
-  detailCodeLensProviderDisposables.get(sourceFileName)?.dispose();
+  detailCodeLensProviderDisposables.get(sourceFilePath)?.dispose();
   codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new DetailCodelensProvider(currentInferCost));
-  detailCodeLensProviderDisposables.set(sourceFileName, codeLensProviderDisposable);
+  detailCodeLensProviderDisposables.set(sourceFilePath, codeLensProviderDisposable);
 }
 
 function createEditorDecorators() {
@@ -304,7 +298,7 @@ function createEditorDecorators() {
   activeTextEditor.setDecorations(methodNameDecorationTypeExpensive, methodNameDecorationsExpensive);
 }
 
-function createWebviewOverview(document: vscode.TextDocument, selectedMethodName: string) {
+function createWebviewOverview(selectedMethodName: string) {
   if (webviewOverview) {
     webviewOverview.dispose();
   }

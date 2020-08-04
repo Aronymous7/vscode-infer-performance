@@ -41,7 +41,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
       codeLens.command = {
         title: `Overview`,
         command: "infer-for-vscode.overviewCodelensAction",
-        arguments: [this.document, selectedMethodName]
+        arguments: [selectedMethodName]
       };
       return codeLens;
     }
