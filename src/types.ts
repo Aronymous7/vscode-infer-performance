@@ -1,34 +1,34 @@
 import * as vscode from 'vscode';
 
 export interface InferCostItem {
-  id: string;           // `${full file path}:${method name}`
-  method_name: string;
+  readonly id: string;           // `${full file path}:${method name}`
+  readonly method_name: string;
   timestamp?: string;   // used for cost history
-  loc: {
-    file: string;
-    lnum: number;
+  readonly loc: {
+    readonly file: string;
+    readonly lnum: number;
   };
-  alloc_cost: {
-    polynomial: string;
-    degree: number;
-    big_o: string;
+  readonly alloc_cost: {
+    readonly polynomial: string;
+    readonly degree: number;
+    readonly big_o: string;
   };
-  exec_cost: {
-    polynomial: string;
-    degree: number;
-    big_o: string;
+  readonly exec_cost: {
+    readonly polynomial: string;
+    readonly degree: number;
+    readonly big_o: string;
   };
 }
 
 export interface MethodDeclaration {
-  name: string;
-  declarationRange: vscode.Range;
-  nameRange: vscode.Range;
+  readonly name: string;
+  readonly declarationRange: vscode.Range;
+  readonly nameRange: vscode.Range;
 }
 
 export interface LineDiff {
-  count: number;
-  added?: boolean;
-  removed?: boolean;
-  value: string;
+  readonly count: number;
+  readonly added?: boolean;
+  readonly removed?: boolean;
+  readonly value: string;
 }
