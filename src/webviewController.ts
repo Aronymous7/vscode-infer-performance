@@ -1,6 +1,13 @@
 import * as vscode from 'vscode';
 import { currentInferCost, inferCostHistories } from './inferController';
 
+const cssStyling = `ul, h3 {
+  margin: 0;
+}
+.selected-method {
+  background-color: rgba(200, 200, 0, 0.2);
+}`;
+
 let webviewOverview: vscode.WebviewPanel;
 let webviewHistory: vscode.WebviewPanel;
 
@@ -29,10 +36,22 @@ export function createWebviewOverview(selectedMethodName: string) {
   let inferCostOverviewHtmlString = "";
   for (let inferCostItem of currentInferCost) {
     if (inferCostItem.method_name === '<init>') { continue; }
-    inferCostOverviewHtmlString += `<div${inferCostItem.method_name === selectedMethodName ? ' class="selected-method"' : ''}>
-<h2>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
-<div>Allocation cost: ${inferCostItem.alloc_cost.polynomial} : ${inferCostItem.alloc_cost.big_o}</div>
-<div>Execution cost: ${inferCostItem.exec_cost.polynomial} : ${inferCostItem.exec_cost.big_o}</div>
+    inferCostOverviewHtmlString += `<div>
+  <h2${inferCostItem.method_name === selectedMethodName ? ' class="selected-method"' : ''}>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
+  <div>
+    <h3>Allocation cost:</h3>
+    <ul>
+      <li>${inferCostItem.alloc_cost.polynomial}</li>
+      <li>${inferCostItem.alloc_cost.big_o}</li>
+    </ul>
+  </div>
+  <div>
+    <h3>Execution cost:</h3>
+    <ul>
+      <li>${inferCostItem.exec_cost.polynomial}</li>
+      <li>${inferCostItem.exec_cost.big_o}</li>
+    </ul>
+  </div>
 </div>
 <hr>`;
   }
@@ -44,9 +63,7 @@ export function createWebviewOverview(selectedMethodName: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infer Cost Overview</title>
   <style>
-.selected-method {
-  background-color: rgba(200, 200, 0, 0.2);
-}
+    ${cssStyling}
   </style>
 </head>
 <body>
@@ -77,9 +94,21 @@ export function createWebviewHistory(methodKey: string) {
   let inferCostHistoryHtmlString = ``;
   for (let costHistoryItem of costHistory) {
     inferCostHistoryHtmlString += `<div>
-<h2>${costHistoryItem.timestamp + (costHistoryItem === costHistory[0] ? ' (most recent)' : '')}</h2>
-<div>Allocation cost: ${costHistoryItem.alloc_cost.polynomial} : ${costHistoryItem.alloc_cost.big_o}</div>
-<div>Execution cost: ${costHistoryItem.exec_cost.polynomial} : ${costHistoryItem.exec_cost.big_o}</div>
+  <h2>${costHistoryItem.timestamp + (costHistoryItem === costHistory[0] ? ' (most recent)' : '')}</h2>
+  <div>
+    <h3>Allocation cost:</h3>
+    <ul>
+      <li>${costHistoryItem.alloc_cost.polynomial}</li>
+      <li>${costHistoryItem.alloc_cost.big_o}</li>
+    </ul>
+  </div>
+  <div>
+    <h3>Execution cost:</h3>
+    <ul>
+      <li>${costHistoryItem.exec_cost.polynomial}</li>
+      <li>${costHistoryItem.exec_cost.big_o}</li>
+    </ul>
+  </div>
 </div>
 <hr>`;
   }
@@ -90,6 +119,9 @@ export function createWebviewHistory(methodKey: string) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infer Cost History</title>
+  <style>
+    ${cssStyling}
+  </style>
 </head>
 <body>
   <h1>Infer Cost History for: ${costHistory[0].method_name} (line ${costHistory[0].loc.lnum})</h1>

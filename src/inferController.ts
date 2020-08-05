@@ -89,12 +89,12 @@ function runInferOnCurrentFile(isManualCall: boolean) {
           lnum: inferCostRawItem.loc.lnum
         },
         alloc_cost: {
-          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial,
+          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace('.', '*'),
           degree: inferCostRawItem.alloc_cost.hum.hum_degree,
           big_o: inferCostRawItem.alloc_cost.hum.big_o
         },
         exec_cost: {
-          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial,
+          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace('.', '*'),
           degree: inferCostRawItem.exec_cost.hum.hum_degree,
           big_o: inferCostRawItem.exec_cost.hum.big_o
         }

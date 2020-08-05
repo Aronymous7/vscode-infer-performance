@@ -57,7 +57,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         return codeLens;
       }
       codeLens.command = {
-        title: `Execution cost: ${currentInferCostItem.exec_cost.polynomial} -- ${currentInferCostItem.exec_cost.big_o}`,
+        title: `Execution cost: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
         command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };
