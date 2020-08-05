@@ -19,3 +19,4 @@
 ## Webview
 
 - Make more secure against injections
+- Add some styling

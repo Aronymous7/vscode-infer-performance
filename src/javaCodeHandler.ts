@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
-import * as Constants from './Constants';
-import { InferCostItem, MethodDeclaration } from './CustomTypes';
+import { METHOD_DECLARATION_REGEX, SIGNIFICANT_CODE_CHANGE_REGEX } from './constants';
+import { InferCostItem, MethodDeclaration, LineDiff } from './types';
+import { activeTextEditor, activeTextEditorTexts } from './inferController';
+
+const Diff = require('diff');
 
 export function getMethodDeclarations(document: vscode.TextDocument) {
-  const regex = new RegExp(Constants.METHOD_DECLARATION_REGEX);
+  const regex = new RegExp(METHOD_DECLARATION_REGEX);
   const text = document.getText();
   let methodDeclarations: MethodDeclaration[] = [];
   let matches;
@@ -46,4 +49,19 @@ export function isExpensiveMethod(methodName: string, inferCost: InferCostItem[]
   } else {
     return false;
   }
+}
+
+export function isSignificantCodeChange(savedText: string) {
+  const previousText = activeTextEditorTexts.get(activeTextEditor.document.fileName);
+  if (!previousText) { return false; }
+
+  const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
+  for (let diffTextPart of diffText) {
+    if (diffTextPart.hasOwnProperty('added') || diffTextPart.hasOwnProperty('removed')) {
+      if (diffTextPart.value.match(SIGNIFICANT_CODE_CHANGE_REGEX)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
