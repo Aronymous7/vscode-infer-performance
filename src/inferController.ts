@@ -54,6 +54,8 @@ export function disableInfer() {
   disposeDecorationTypes();
   disposeCodeLensProviders();
   disposeWebviews();
+  inferCosts = new Map<string, InferCostItem[]>();
+  activeTextEditorTexts = new Map<string, string>();
 }
 
 function runInferOnCurrentFile(isManualCall: boolean) {
@@ -70,7 +72,7 @@ function runInferOnCurrentFile(isManualCall: boolean) {
     if (isManualCall) {
       vscode.window.showErrorMessage("Execution of Infer failed (probably due to compilation error).");
     } else {
-      vscode.window.showErrorMessage("Re-execution of Infer failed (probably due to compilation error).");
+      vscode.window.showErrorMessage("Automatic re-execution of Infer failed (probably due to compilation error).");
     }
     console.log("Execution of infer command failed (probably due to compilation error).");
     return false;
