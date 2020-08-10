@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { INFER_OUTPUT_DIRECTORY } from './constants';
 import { InferCostItem } from './types';
 import {
-  areDecorationTypesSet,
-  initializeDecorationTypes,
+  areNameDecorationTypesSet,
+  initializeNameDecorationTypes,
   createEditorDecorators,
   disposeDecorationTypes
 } from './editorDecoratorController';
@@ -28,8 +28,8 @@ export function setCurrentInferCost(newCurrentInferCost: InferCostItem[]) {
 }
 
 export function executeInfer(isManualCall: boolean) {
-  if (!areDecorationTypesSet) {
-    initializeDecorationTypes();
+  if (!areNameDecorationTypesSet) {
+    initializeNameDecorationTypes();
   }
 
   const tmpActiveTextEditor = vscode.window.activeTextEditor;
