@@ -29,28 +29,6 @@ export function getMethodDeclarations(document: vscode.TextDocument) {
   return methodDeclarations;
 }
 
-export function isExpensiveMethod(methodName: string, inferCost: InferCostItem[] | undefined) {
-  if (inferCost === undefined) { return false; }
-
-  let mostExpensiveConstantMethod = {
-    name: '',
-    executionCost: 0
-  };
-  for (let inferCostItem of inferCost) {
-    if (+inferCostItem.exec_cost.degree === 0 && +inferCostItem.exec_cost.polynomial > mostExpensiveConstantMethod.executionCost) {
-      mostExpensiveConstantMethod = {
-        name: inferCostItem.method_name,
-        executionCost: +inferCostItem.exec_cost.polynomial
-      };
-    }
-  }
-  if (methodName === mostExpensiveConstantMethod.name) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 export function isSignificantCodeChange(savedText: string) {
   const previousText = activeTextEditorTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }

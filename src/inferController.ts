@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { INFER_OUTPUT_DIRECTORY } from './constants';
 import { InferCostItem } from './types';
 import {
-  areNameDecorationTypesSet,
+  costDegreeDecorationTypes,
   initializeNameDecorationTypes,
   createEditorDecorators,
   disposeDecorationTypes
@@ -41,7 +41,8 @@ export async function executeInfer(isManualCall: boolean) {
 
   updateInferCostHistory();
 
-  if (!areNameDecorationTypesSet) {
+  if (costDegreeDecorationTypes.length === 0) {
+    console.log('test');
     initializeNameDecorationTypes();
   }
 

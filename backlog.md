@@ -13,7 +13,6 @@
 - History of runtimes after each execution of Infer
   - Show what code changes likely led to significant change in cost (added/removed loop, method call, etc.)
   - Give option to persist history between sessions (optional)
-- Show significant changes in cost immediately in CodeLens (maybe with color coding, warning messages, etc.)
 
 ## Webview
 
