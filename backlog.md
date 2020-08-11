@@ -6,7 +6,6 @@
 
 ## Editor Decorator
 
-- Color coding for significant changes in cost
 - Interactive coloring (e.g. when an expensive method cannot be made cheaper -> set color to green)
 
 ## Code Lenses

@@ -3,8 +3,8 @@ import { activeTextEditor, currentInferCost, inferCostHistories, setCurrentInfer
 import { getMethodDeclarations, isExpensiveMethod } from './javaCodeHandler';
 import { InferCostItem } from './types';
 
-// [document.fileName, [methodName, decorationType]]
-let methodDeclarationDecorationTypes = new Map<string, Map<string, vscode.TextEditorDecorationType>>();
+// [inferCostItem.id, decorationType]
+let methodDeclarationDecorationTypes = new Map<string, vscode.TextEditorDecorationType>();
 
 let methodNameDecorationType: vscode.TextEditorDecorationType;
 let methodNameDecorationTypeExpensive: vscode.TextEditorDecorationType;
@@ -19,11 +19,10 @@ export function disposeDecorationTypes() {
     areNameDecorationTypesSet = false;
   }
 
-  for (const decorationTypeMap of methodDeclarationDecorationTypes) {
-    for (const decorationType of decorationTypeMap[1]) {
-      decorationType[1].dispose();
-    }
+  for (const decorationType of methodDeclarationDecorationTypes) {
+    decorationType[1].dispose();
   }
+  methodDeclarationDecorationTypes = new Map<string, vscode.TextEditorDecorationType>();
 }
 
 export function initializeNameDecorationTypes() {
@@ -44,38 +43,29 @@ export function initializeNameDecorationTypes() {
 export function createEditorDecorators() {
   const methodDeclarations = getMethodDeclarations(activeTextEditor.document);
 
-  const methodDeclarationDecorations: vscode.DecorationOptions[] = [];
   const methodNameDecorations: vscode.DecorationOptions[] = [];
   const methodNameDecorationsExpensive: vscode.DecorationOptions[] = [];
   for (let inferCostItem of currentInferCost) {
     methodDeclarations.some(methodDeclaration => {
       if (inferCostItem.method_name === methodDeclaration.name) {
         const declarationDecoration = { range: methodDeclaration.declarationRange };
-        const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.polynomial} -- ${inferCostItem.exec_cost.big_o}` };
+        const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.polynomial} ~~ ${inferCostItem.exec_cost.big_o}` };
         if (isExpensiveMethod(inferCostItem.method_name, currentInferCost)) {
           methodNameDecorationsExpensive.push(nameDecoration);
         } else {
           methodNameDecorations.push(nameDecoration);
         }
-        let methodDeclarationDecorationType = significantCostChangeDecorationType(inferCostItem);
-        if (methodDeclarationDecorationType) {
-          let currentDecorationTypes = methodDeclarationDecorationTypes.get(activeTextEditor.document.fileName);
-          if (!currentDecorationTypes) {
-            currentDecorationTypes = methodDeclarationDecorationTypes.
-                set(activeTextEditor.document.fileName, new Map<string, vscode.TextEditorDecorationType>()).
-                get(activeTextEditor.document.fileName);
-          }
-          if (currentDecorationTypes) {
-            currentDecorationTypes.set(inferCostItem.method_name, methodDeclarationDecorationType);
-            activeTextEditor.setDecorations(methodDeclarationDecorationType, new Array(declarationDecoration));
-          }
-        } else {
-          methodDeclarationDecorationType = methodDeclarationDecorationTypes.get(activeTextEditor.document.fileName)?.
-                                                                             get(inferCostItem.method_name);
-          if (methodDeclarationDecorationType) {
-            activeTextEditor.setDecorations(methodDeclarationDecorationType, new Array(declarationDecoration));
-          }
+
+        const newMethodDeclarationDecorationType = significantCostChangeDecorationType(inferCostItem);
+        const oldMethodDeclarationDecorationType = methodDeclarationDecorationTypes.get(inferCostItem.id);
+        if (newMethodDeclarationDecorationType) {
+          oldMethodDeclarationDecorationType?.dispose();
+          methodDeclarationDecorationTypes.set(inferCostItem.id, newMethodDeclarationDecorationType);
+          activeTextEditor.setDecorations(newMethodDeclarationDecorationType, new Array(declarationDecoration));
+        } else if (oldMethodDeclarationDecorationType) {
+          activeTextEditor.setDecorations(oldMethodDeclarationDecorationType, new Array(declarationDecoration));
         }
+
         return true;
       }
     });
@@ -89,10 +79,10 @@ function significantCostChangeDecorationType(currentInferCostItem: InferCostItem
   if (!inferCostItemHistory || inferCostItemHistory.length < 2) { return undefined; }
 
   const previousInferCostItem = inferCostItemHistory[1];
-  if (currentInferCostItem.exec_cost.big_o !== previousInferCostItem.exec_cost.big_o) {
-    let costChangeColor = '#ff0000';
-    if (currentInferCostItem.exec_cost.degree < previousInferCostItem.exec_cost.degree) {
-      costChangeColor = '#00ff00';
+  if (currentInferCostItem.exec_cost.degree !== previousInferCostItem.exec_cost.degree) {
+    let costChangeColor = '#00ff00';
+    if (currentInferCostItem.exec_cost.degree > previousInferCostItem.exec_cost.degree) {
+      costChangeColor = '#ff0000';
     }
     return vscode.window.createTextEditorDecorationType({
       after: {

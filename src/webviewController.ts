@@ -39,17 +39,17 @@ export function createWebviewOverview(selectedMethodName: string) {
     inferCostOverviewHtmlString += `<div>
   <h2${inferCostItem.method_name === selectedMethodName ? ' class="selected-method"' : ''}>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
   <div>
-    <h3>Allocation cost:</h3>
-    <ul>
-      <li>${inferCostItem.alloc_cost.polynomial}</li>
-      <li>${inferCostItem.alloc_cost.big_o}</li>
-    </ul>
-  </div>
-  <div>
     <h3>Execution cost:</h3>
     <ul>
       <li>${inferCostItem.exec_cost.polynomial}</li>
       <li>${inferCostItem.exec_cost.big_o}</li>
+    </ul>
+  </div>
+  <div>
+    <h3>Allocation cost:</h3>
+    <ul>
+      <li>${inferCostItem.alloc_cost.polynomial}</li>
+      <li>${inferCostItem.alloc_cost.big_o}</li>
     </ul>
   </div>
 </div>
@@ -96,17 +96,17 @@ export function createWebviewHistory(methodKey: string) {
     inferCostHistoryHtmlString += `<div>
   <h2>${costHistoryItem.timestamp + (costHistoryItem === costHistory[0] ? ' (most recent)' : '')}</h2>
   <div>
-    <h3>Allocation cost:</h3>
-    <ul>
-      <li>${costHistoryItem.alloc_cost.polynomial}</li>
-      <li>${costHistoryItem.alloc_cost.big_o}</li>
-    </ul>
-  </div>
-  <div>
     <h3>Execution cost:</h3>
     <ul>
       <li>${costHistoryItem.exec_cost.polynomial}</li>
       <li>${costHistoryItem.exec_cost.big_o}</li>
+    </ul>
+  </div>
+  <div>
+    <h3>Allocation cost:</h3>
+    <ul>
+      <li>${costHistoryItem.alloc_cost.polynomial}</li>
+      <li>${costHistoryItem.alloc_cost.big_o}</li>
     </ul>
   </div>
 </div>
