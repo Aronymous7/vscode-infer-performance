@@ -18,9 +18,9 @@ let isAutoReExecutionEnabled = false;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
+  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", async () => {
     vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
-    const success = executeInfer(true);
+    const success = await executeInfer(true);
     isAutoReExecutionEnabled = true;
     if (success) {
       vscode.window.showInformationMessage('Infer has been executed.');

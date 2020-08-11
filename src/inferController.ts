@@ -10,8 +10,9 @@ import {
 import { createCodeLenses, disposeCodeLensProviders } from './codeLens/codelensController';
 import { disposeWebviews } from './webviewController';
 
-const childProcess = require('child_process');
 const fs = require('fs');
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 export let activeTextEditor: vscode.TextEditor;
 export let activeTextEditorTexts = new Map<string, string>();        // [document.fileName, text]
@@ -27,22 +28,22 @@ export function setCurrentInferCost(newCurrentInferCost: InferCostItem[]) {
   currentInferCost = newCurrentInferCost;
 }
 
-export function executeInfer(isManualCall: boolean) {
-  if (!areNameDecorationTypesSet) {
-    initializeNameDecorationTypes();
-  }
-
+export async function executeInfer(isManualCall: boolean) {
   const tmpActiveTextEditor = vscode.window.activeTextEditor;
   if (tmpActiveTextEditor) {
     activeTextEditor = tmpActiveTextEditor;
     activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
   } else { return false; }
 
-  if (!runInferOnCurrentFile(isManualCall)) {
+  if (!await runInferOnCurrentFile(isManualCall)) {
     return false;
   }
 
   updateInferCostHistory();
+
+  if (!areNameDecorationTypesSet) {
+    initializeNameDecorationTypes();
+  }
 
   createCodeLenses();
   createEditorDecorators();
@@ -58,7 +59,7 @@ export function disableInfer() {
   activeTextEditorTexts = new Map<string, string>();
 }
 
-function runInferOnCurrentFile(isManualCall: boolean) {
+async function runInferOnCurrentFile(isManualCall: boolean) {
   const sourceFilePath = activeTextEditor.document.fileName;
   if (!sourceFilePath.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
@@ -67,7 +68,7 @@ function runInferOnCurrentFile(isManualCall: boolean) {
   }
   const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
   try {
-    childProcess.execSync(`infer --cost-only -o ${INFER_OUTPUT_DIRECTORY}/${sourceFileName} -- javac ${sourceFilePath}`);
+    await exec(`infer --cost-only -o ${INFER_OUTPUT_DIRECTORY}/${sourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
     if (isManualCall) {
       vscode.window.showErrorMessage("Execution of Infer failed (probably due to compilation error).");
