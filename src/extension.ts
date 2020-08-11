@@ -18,13 +18,22 @@ let isAutoReExecutionEnabled = false;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", async () => {
+  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
     vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
-    const success = await executeInfer(true);
-    isAutoReExecutionEnabled = true;
-    if (success) {
-      vscode.window.showInformationMessage('Infer has been executed.');
-    }
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: "Executing Infer...",
+      cancellable: false
+    }, (progress, token) => {
+      return new Promise(async resolve => {
+        const success = await executeInfer(true);
+        isAutoReExecutionEnabled = true;
+        if (success) {
+          vscode.window.showInformationMessage('Infer has been successfully executed.');
+        }
+        resolve();
+      });
+    });
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -71,8 +80,19 @@ export function activate(context: vscode.ExtensionContext) {
         isAutoReExecutionEnabled &&
         isSignificantCodeChange(event.getText())) {
 
-      vscode.window.showInformationMessage("Re-executing Infer...");
-      executeInfer(false);
+      vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Automatic re-execution of Infer...",
+        cancellable: false
+      }, (progress, token) => {
+        return new Promise(async resolve => {
+          const success = await executeInfer(false);
+          if (success) {
+            vscode.window.showInformationMessage('Infer has been successfully re-executed.');
+          }
+          resolve();
+        });
+      });
     }
   }, null, context.subscriptions);
 }
