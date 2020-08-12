@@ -42,7 +42,6 @@ export async function executeInfer(isManualCall: boolean) {
   updateInferCostHistory();
 
   if (costDegreeDecorationTypes.length === 0) {
-    console.log('test');
     initializeNameDecorationTypes();
   }
 

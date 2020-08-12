@@ -79,7 +79,7 @@ function significantCostChangeDecorationType(currentInferCostItem: InferCostItem
   if (!inferCostItemHistory || inferCostItemHistory.length < 2) { return undefined; }
 
   const previousInferCostItem = inferCostItemHistory[1];
-  if (currentInferCostItem.exec_cost.degree !== previousInferCostItem.exec_cost.degree) {
+  if (currentInferCostItem.exec_cost.big_o !== previousInferCostItem.exec_cost.big_o) {
     let costChangeColor = '#00ff00';
     if (currentInferCostItem.exec_cost.degree > previousInferCostItem.exec_cost.degree) {
       costChangeColor = '#ff0000';
