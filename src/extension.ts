@@ -5,7 +5,8 @@ import {
   executeInfer,
   disableInfer,
   setCurrentInferCost,
-  setActiveTextEditor
+  setActiveTextEditor,
+  activeTextEditor
 } from './inferController';
 import {
   isSignificantCodeChange,
@@ -96,9 +97,10 @@ export function activate(context: vscode.ExtensionContext) {
     }
   }, null, context.subscriptions);
 
-  vscode.workspace.onDidSaveTextDocument(event => {
-    if (isExtensionEnabled &&
-        isSignificantCodeChange(event.getText())) {
+  vscode.workspace.onDidSaveTextDocument(document => {
+    if (document === activeTextEditor.document &&
+        isExtensionEnabled &&
+        isSignificantCodeChange(document.getText())) {
 
       vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
