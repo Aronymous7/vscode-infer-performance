@@ -64,8 +64,15 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.addMethodToWhitelist", () => {
-    addMethodToWhitelist('testMethod');
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.addMethodToWhitelist", async () => {
+    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should not trigger re-execution of Infer.', placeHolder: "e.g. 'printMethod'" }))?.trim();
+    if (methodName) {
+      if (methodName.match(/^[A-Za-z_$][A-Za-z0-9_]+$/gm)) {
+        addMethodToWhitelist(methodName);
+      } else {
+        vscode.window.showInformationMessage("Not a valid method name.");
+      }
+    }
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

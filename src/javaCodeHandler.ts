@@ -38,7 +38,6 @@ export function isSignificantCodeChange(savedText: string) {
   if (!previousText) { return false; }
 
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
-  console.log(significantCodeChangeRegex.source);
   for (let diffTextPart of diffText) {
     if (diffTextPart.hasOwnProperty('added') || diffTextPart.hasOwnProperty('removed')) {
       if (diffTextPart.value.match(significantCodeChangeRegex)) {
@@ -58,4 +57,5 @@ export function addMethodToWhitelist(methodName: string) {
   }
   methodWhitelist += `|${methodName}`;
   significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch${methodWhitelist})\\(.*\\))`, 'g');
+  console.log(significantCodeChangeRegex.source);
 }
