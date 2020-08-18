@@ -45,10 +45,18 @@
       }
     ],
     "configuration": {
+      "title": "Infer",
       "properties": {
         "infer-for-vscode.enableInfer": {
           "type": "boolean",
           "default": false
+        },
+        "infer-for-vscode.methodWhitelist": {
+          "type": "array",
+          "default": ["print", "println"],
+          "description": "Whitelisted methods that won't lead to an automatic re-execution of Infer when a call to them is added or removed somewhere in your code.",
+          "examples": [["cheapMethod1", "cheapMethod2"]],
+          "uniqueItems": true
         }
       }
     }

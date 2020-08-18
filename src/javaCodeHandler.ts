@@ -4,13 +4,16 @@ import { activeTextEditor, activeTextEditorTexts } from './inferController';
 
 const Diff = require('diff');
 
-let methodWhitelist = '';
-
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]+)(?<!if|switch|while|for)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
-let significantCodeChangeRegex = new RegExp(/(while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch)\(.*\))/g);
+let significantCodeChangeRegex: RegExp;
 
 function updateSignificantCodeChangeRegex() {
-  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch${methodWhitelist})\\(.*\\))`, 'g');
+  const methodWhitelist: Array<string> = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
+  let methodWhitelistString = '';
+  if (methodWhitelist.length !== 0) {
+    methodWhitelistString = '|' + methodWhitelist.join('|');
+  }
+  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch${methodWhitelistString})\\(.*\\))`, 'g');
 }
 
 export function getMethodDeclarations(document: vscode.TextDocument) {
@@ -41,6 +44,7 @@ export function isSignificantCodeChange(savedText: string) {
   const previousText = activeTextEditorTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
 
+  updateSignificantCodeChangeRegex();
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
   for (let diffTextPart of diffText) {
     if (diffTextPart.hasOwnProperty('added') || diffTextPart.hasOwnProperty('removed')) {
@@ -57,17 +61,18 @@ export function addMethodToWhitelist(methodName: string) {
     vscode.window.showInformationMessage("Not a valid method name.");
     return;
   }
-  const whitelistedMethods = methodWhitelist.split('|');
-  for (const whitelistedMethod of whitelistedMethods) {
+  let methodWhitelist: Array<string> = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
+  for (const whitelistedMethod of methodWhitelist) {
     if (whitelistedMethod === methodName) {
       return;
     }
   }
-  methodWhitelist += `|${methodName}`;
-  updateSignificantCodeChangeRegex();
+  methodWhitelist.push(methodName);
+  vscode.workspace.getConfiguration("infer-for-vscode").update("methodWhitelist", methodWhitelist, true);
 }
 
 export function removeMethodFromWhitelist(methodName: string) {
-  methodWhitelist = methodWhitelist.replace(`|${methodName}`, '');
-  updateSignificantCodeChangeRegex();
+  let methodWhitelist: Array<string> = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
+  methodWhitelist = methodWhitelist.filter(method => method !== methodName);
+  vscode.workspace.getConfiguration("infer-for-vscode").update("methodWhitelist", methodWhitelist, true);
 }
