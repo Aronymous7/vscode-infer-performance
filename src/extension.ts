@@ -18,12 +18,12 @@ import { createWebviewOverview, createWebviewHistory } from './webviewController
 const fs = require('fs');
 
 let disposables: vscode.Disposable[] = [];
-let isAutoReExecutionEnabled = false;
+
+export let isExtensionEnabled = false;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
-    vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", true, true);
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: "Executing Infer...",
@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
     }, (progress, token) => {
       return new Promise(async resolve => {
         const success = await executeInfer(true);
-        isAutoReExecutionEnabled = true;
+        isExtensionEnabled = true;
         if (success) {
           vscode.window.showInformationMessage('Infer has been successfully executed.');
         }
@@ -43,8 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disableInfer", () => {
-    isAutoReExecutionEnabled = false;
-    vscode.workspace.getConfiguration("infer-for-vscode").update("enableInfer", false, true);
+    isExtensionEnabled = false;
     disableInfer();
   });
   disposables.push(disposableCommand);
@@ -98,8 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
   }, null, context.subscriptions);
 
   vscode.workspace.onDidSaveTextDocument(event => {
-    if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableInfer", false) &&
-        isAutoReExecutionEnabled &&
+    if (isExtensionEnabled &&
         isSignificantCodeChange(event.getText())) {
 
       vscode.window.withProgress({

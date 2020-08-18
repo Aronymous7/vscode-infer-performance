@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { InferCostItem } from '../types';
+import { isExtensionEnabled } from '../extension';
 import { getMethodDeclarations } from '../javaCodeHandler';
 
 export class DetailCodelensProvider implements vscode.CodeLensProvider {
@@ -19,7 +20,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
   }
 
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
-    if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableInfer", false)) {
+    if (isExtensionEnabled) {
       this.document = document;
       const methodDeclarations = getMethodDeclarations(document);
       this.codeLenses = [];
@@ -32,7 +33,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
   }
 
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
-    if (vscode.workspace.getConfiguration("infer-for-vscode").get("enableInfer", false)) {
+    if (isExtensionEnabled) {
       if (!this.document) { return; }
       const methodDeclarations = getMethodDeclarations(this.document);
       let methodName = "";
