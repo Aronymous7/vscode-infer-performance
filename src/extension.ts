@@ -7,7 +7,7 @@ import {
   setCurrentInferCost,
   setActiveTextEditor
 } from './inferController';
-import { isSignificantCodeChange } from './javaCodeHandler';
+import { isSignificantCodeChange, addMethodToWhitelist } from './javaCodeHandler';
 import { createEditorDecorators } from './editorDecoratorController';
 import { createWebviewOverview, createWebviewHistory } from './webviewController';
 
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensError", (methodKey: string) => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensError", () => {
     vscode.window.showInformationMessage("Please save and re-execute Infer.");
   });
   disposables.push(disposableCommand);
@@ -60,6 +60,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string) => {
     createWebviewOverview(selectedMethodName);
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.addMethodToWhitelist", () => {
+    addMethodToWhitelist('testMethod');
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

@@ -1,12 +1,16 @@
 import * as vscode from 'vscode';
-import { METHOD_DECLARATION_REGEX, SIGNIFICANT_CODE_CHANGE_REGEX } from './constants';
 import { InferCostItem, MethodDeclaration, LineDiff } from './types';
 import { activeTextEditor, activeTextEditorTexts } from './inferController';
 
 const Diff = require('diff');
 
+let methodWhitelist = '';
+
+const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]+)(?<!if|switch|while|for)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
+let significantCodeChangeRegex = new RegExp(/(while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch)\(.*\))/g);
+
 export function getMethodDeclarations(document: vscode.TextDocument) {
-  const regex = new RegExp(METHOD_DECLARATION_REGEX);
+  const regex = new RegExp(methodDeclarationRegex);
   const text = document.getText();
   let methodDeclarations: MethodDeclaration[] = [];
   let matches;
@@ -34,12 +38,24 @@ export function isSignificantCodeChange(savedText: string) {
   if (!previousText) { return false; }
 
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
+  console.log(significantCodeChangeRegex.source);
   for (let diffTextPart of diffText) {
     if (diffTextPart.hasOwnProperty('added') || diffTextPart.hasOwnProperty('removed')) {
-      if (diffTextPart.value.match(SIGNIFICANT_CODE_CHANGE_REGEX)) {
+      if (diffTextPart.value.match(significantCodeChangeRegex)) {
         return true;
       }
     }
   }
   return false;
+}
+
+export function addMethodToWhitelist(methodName: string) {
+  const whitelistedMethods = methodWhitelist.split('|');
+  for (const whitelistedMethod of whitelistedMethods) {
+    if (whitelistedMethod === methodName) {
+      return;
+    }
+  }
+  methodWhitelist += `|${methodName}`;
+  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch${methodWhitelist})\\(.*\\))`, 'g');
 }

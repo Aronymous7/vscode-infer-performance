@@ -32,6 +32,11 @@
         "command": "infer-for-vscode.disableInfer",
         "title": "Disable Infer",
         "category": "Infer"
+      },
+      {
+        "command": "infer-for-vscode.addMethodToWhitelist",
+        "title": "Add method to whitelist",
+        "category": "Infer"
       }
     ],
     "configuration": {

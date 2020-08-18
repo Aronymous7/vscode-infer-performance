@@ -3,6 +3,8 @@
 ## General
 
 - Test Infer execution time on large code base
+  - Compare javac with the respective build tool (e.g. Maven), maybe in combination with the --reactive option of Infer
+- Custom whitelist for functions that should not trigger re-execution of infer
 
 ## Editor Decorator
 
