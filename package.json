@@ -37,6 +37,11 @@
         "command": "infer-for-vscode.addMethodToWhitelist",
         "title": "Add method to whitelist",
         "category": "Infer"
+      },
+      {
+        "command": "infer-for-vscode.removeMethodFromWhitelist",
+        "title": "Remove method from whitelist",
+        "category": "Infer"
       }
     ],
     "configuration": {

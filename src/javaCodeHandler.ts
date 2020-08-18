@@ -9,6 +9,10 @@ let methodWhitelist = '';
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]+)(?<!if|switch|while|for)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
 let significantCodeChangeRegex = new RegExp(/(while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch)\(.*\))/g);
 
+function updateSignificantCodeChangeRegex() {
+  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch${methodWhitelist})\\(.*\\))`, 'g');
+}
+
 export function getMethodDeclarations(document: vscode.TextDocument) {
   const regex = new RegExp(methodDeclarationRegex);
   const text = document.getText();
@@ -49,6 +53,10 @@ export function isSignificantCodeChange(savedText: string) {
 }
 
 export function addMethodToWhitelist(methodName: string) {
+  if (!methodName.match(/^[A-Za-z_$][A-Za-z0-9_]+$/gm)) {
+    vscode.window.showInformationMessage("Not a valid method name.");
+    return;
+  }
   const whitelistedMethods = methodWhitelist.split('|');
   for (const whitelistedMethod of whitelistedMethods) {
     if (whitelistedMethod === methodName) {
@@ -56,6 +64,10 @@ export function addMethodToWhitelist(methodName: string) {
     }
   }
   methodWhitelist += `|${methodName}`;
-  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch${methodWhitelist})\\(.*\\))`, 'g');
-  console.log(significantCodeChangeRegex.source);
+  updateSignificantCodeChangeRegex();
+}
+
+export function removeMethodFromWhitelist(methodName: string) {
+  methodWhitelist = methodWhitelist.replace(`|${methodName}`, '');
+  updateSignificantCodeChangeRegex();
 }

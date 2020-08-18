@@ -7,7 +7,11 @@ import {
   setCurrentInferCost,
   setActiveTextEditor
 } from './inferController';
-import { isSignificantCodeChange, addMethodToWhitelist } from './javaCodeHandler';
+import {
+  isSignificantCodeChange,
+  addMethodToWhitelist,
+  removeMethodFromWhitelist
+} from './javaCodeHandler';
 import { createEditorDecorators } from './editorDecoratorController';
 import { createWebviewOverview, createWebviewHistory } from './webviewController';
 
@@ -65,13 +69,18 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.addMethodToWhitelist", async () => {
-    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should not trigger re-execution of Infer.', placeHolder: "e.g. 'printMethod'" }))?.trim();
+    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should not trigger re-execution of Infer.', placeHolder: "e.g. cheapMethod" }))?.trim();
     if (methodName) {
-      if (methodName.match(/^[A-Za-z_$][A-Za-z0-9_]+$/gm)) {
-        addMethodToWhitelist(methodName);
-      } else {
-        vscode.window.showInformationMessage("Not a valid method name.");
-      }
+      addMethodToWhitelist(methodName);
+    }
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.removeMethodFromWhitelist", async () => {
+    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should be removed from the whitelist.', placeHolder: "e.g. expensiveMethod" }))?.trim();
+    if (methodName) {
+      removeMethodFromWhitelist(methodName);
     }
   });
   disposables.push(disposableCommand);
