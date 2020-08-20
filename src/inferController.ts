@@ -71,9 +71,9 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
     await exec(`infer --cost-only -o ${INFER_OUTPUT_DIRECTORY}/${sourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
     if (isManualCall) {
-      vscode.window.showErrorMessage("Execution of Infer failed (probably due to compilation error).");
+      vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
     } else {
-      vscode.window.showErrorMessage("Automatic re-execution of Infer failed (probably due to compilation error).");
+      vscode.window.showInformationMessage("Automatic re-execution of Infer failed (probably due to compilation error).");
     }
     console.log("Execution of infer command failed (probably due to compilation error).");
     return false;

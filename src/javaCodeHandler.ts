@@ -4,7 +4,7 @@ import { activeTextEditor, activeTextEditorTexts } from './inferController';
 
 const Diff = require('diff');
 
-const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]+)(?<!if|switch|while|for)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
+const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
 let significantCodeChangeRegex: RegExp;
 
 function updateSignificantCodeChangeRegex() {
@@ -13,7 +13,7 @@ function updateSignificantCodeChangeRegex() {
   if (methodWhitelist.length !== 0) {
     methodWhitelistString = '|' + methodWhitelist.join('|');
   }
-  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!if|switch${methodWhitelistString})\\(.*\\))`, 'g');
+  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\\W+(if|switch${methodWhitelistString}))\\(.*\\))`, 'g');
 }
 
 export function getMethodDeclarations(document: vscode.TextDocument) {
