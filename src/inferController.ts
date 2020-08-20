@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { INFER_OUTPUT_DIRECTORY } from './constants';
 import { InferCostItem } from './types';
 import {
   costDegreeDecorationTypes,
@@ -18,7 +17,7 @@ export let activeTextEditor: vscode.TextEditor;
 export let activeTextEditorTexts = new Map<string, string>();        // [document.fileName, text]
 
 export let currentInferCost: InferCostItem[];
-export let inferCosts = new Map<string, InferCostItem[]>();          // [document.fileName, inferCost]
+export let inferCosts = new Map<string, InferCostItem[]>();          // [sourceFileName, inferCost]
 export let inferCostHistories = new Map<string, InferCostItem[]>();  // [inferCostItem.id, costHistory]
 
 export function setActiveTextEditor(newActiveTextEditor: vscode.TextEditor) {
@@ -59,6 +58,11 @@ export function disableInfer() {
   activeTextEditorTexts = new Map<string, string>();
 }
 
+export function getSourceFileName(editor: vscode.TextEditor) {
+  const sourceFileName = editor.document.fileName.split("/").pop();
+  return sourceFileName ? sourceFileName : '';
+}
+
 async function runInferOnCurrentFile(isManualCall: boolean) {
   const sourceFilePath = activeTextEditor.document.fileName;
   if (!sourceFilePath.endsWith(".java")) {
@@ -66,9 +70,12 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
     console.log("Tried to execute Infer on non-Java file.");
     return false;
   }
-  const sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
+  const sourceFileName = getSourceFileName(activeTextEditor);
+  const pureSourceFileName = sourceFileName.split(".")[0];
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  const currentWorkspaceFolder = workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
   try {
-    await exec(`infer --cost-only -o ${INFER_OUTPUT_DIRECTORY}/${sourceFileName} -- javac ${sourceFilePath}`);
+    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${pureSourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
     if (isManualCall) {
       vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
@@ -81,7 +88,7 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
 
   let inferCost: InferCostItem[] = [];
   try {
-    const inferCostJsonString = fs.readFileSync(`${INFER_OUTPUT_DIRECTORY}/${sourceFileName}/costs-report.json`);
+    const inferCostJsonString = fs.readFileSync(`${currentWorkspaceFolder}/infer-out-${pureSourceFileName}/costs-report.json`);
     let inferCostRaw = JSON.parse(inferCostJsonString);
     for (let inferCostRawItem of inferCostRaw) {
       inferCost.push({
@@ -108,13 +115,13 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
     console.log("InferCost file could not be read.");
     return false;
   } finally {
-    if (fs.existsSync(`${INFER_OUTPUT_DIRECTORY}/${sourceFileName}`)) {
-      let inferOut = vscode.Uri.file(`${INFER_OUTPUT_DIRECTORY}/${sourceFileName}`);
-      vscode.workspace.fs.delete(inferOut, {recursive: true});
-    }
+    // if (fs.existsSync(`./infer-out-${pureSourceFileName}`)) {
+    //   let inferOut = vscode.Uri.file(`./infer-out-${pureSourceFileName}`);
+    //   vscode.workspace.fs.delete(inferOut, {recursive: true});
+    // }
   }
   currentInferCost = inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
-  inferCosts.set(sourceFilePath, currentInferCost);
+  inferCosts.set(sourceFileName, currentInferCost);
   return true;
 }
 

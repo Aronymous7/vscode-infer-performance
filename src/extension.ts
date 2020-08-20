@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
-import { INFER_OUTPUT_DIRECTORY } from './constants';
 import {
   inferCosts,
   executeInfer,
   disableInfer,
   setCurrentInferCost,
   setActiveTextEditor,
-  activeTextEditor
+  activeTextEditor,
+  getSourceFileName
 } from './inferController';
 import {
   isSignificantCodeChange,
@@ -89,7 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.onDidChangeActiveTextEditor(editor => {
     if (editor) {
       setActiveTextEditor(editor);
-      const tmpInferCost = inferCosts.get(editor.document.fileName);
+      const tmpInferCost = inferCosts.get(getSourceFileName(editor));
       if (tmpInferCost) {
         setCurrentInferCost(tmpInferCost);
         createEditorDecorators();
@@ -121,10 +121,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 // this method is called when your extension is deactivated
 export function deactivate() {
-  if (fs.existsSync(INFER_OUTPUT_DIRECTORY)) {
-    let inferOut = vscode.Uri.file(INFER_OUTPUT_DIRECTORY);
-    vscode.workspace.fs.delete(inferOut, {recursive: true});
-  }
   disableInfer();
   if (disposables) {
     disposables.forEach(item => item.dispose());
