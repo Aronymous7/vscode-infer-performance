@@ -58,9 +58,24 @@ export function disableInfer() {
   activeTextEditorTexts = new Map<string, string>();
 }
 
+export function cleanInferOut() {
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  fs.readdirSync(currentWorkspaceFolder).forEach((file: string) => {
+    const filePath = `${currentWorkspaceFolder}/${file}`;
+    if (file.startsWith("infer-out") && fs.statSync(filePath).isDirectory()) {
+      vscode.workspace.fs.delete(vscode.Uri.file(filePath), {recursive: true});
+    }
+  });
+}
+
 export function getSourceFileName(editor: vscode.TextEditor) {
   const sourceFileName = editor.document.fileName.split("/").pop();
   return sourceFileName ? sourceFileName : '';
+}
+
+function getCurrentWorkspaceFolder() {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  return workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
 }
 
 async function runInferOnCurrentFile(isManualCall: boolean) {
@@ -72,8 +87,7 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
   }
   const sourceFileName = getSourceFileName(activeTextEditor);
   const pureSourceFileName = sourceFileName.split(".")[0];
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  const currentWorkspaceFolder = workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
     await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${pureSourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {

@@ -3,6 +3,7 @@ import {
   inferCosts,
   executeInfer,
   disableInfer,
+  cleanInferOut,
   setCurrentInferCost,
   setActiveTextEditor,
   activeTextEditor,
@@ -43,7 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.loadInfer", () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", () => {
     // TODO
   });
   disposables.push(disposableCommand);
@@ -57,7 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.cleanInferOut", () => {
-    // TODO
+    cleanInferOut();
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

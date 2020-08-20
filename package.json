@@ -29,8 +29,8 @@
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.loadInfer",
-        "title": "Load Infer",
+        "command": "infer-for-vscode.enableInfer",
+        "title": "Enable Infer",
         "category": "Infer"
       },
       {
