@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import {
   inferCosts,
   executeInfer,
+  enableInfer,
+  enableInferForCurrentFile,
   disableInfer,
   cleanInferOut,
   setCurrentInferCost,
@@ -44,8 +46,15 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", () => {
-    // TODO
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", async () => {
+    await enableInfer();
+    isExtensionEnabled = true;
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForCurrentFile", () => {
+    enableInferForCurrentFile();
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

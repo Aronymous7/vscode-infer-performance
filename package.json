@@ -34,6 +34,11 @@
         "category": "Infer"
       },
       {
+        "command": "infer-for-vscode.enableInferForCurrentFile",
+        "title": "Enable Infer only for current file",
+        "category": "Infer"
+      },
+      {
         "command": "infer-for-vscode.disableInfer",
         "title": "Disable Infer",
         "category": "Infer"

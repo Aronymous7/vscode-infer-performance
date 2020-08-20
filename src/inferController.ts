@@ -50,6 +50,51 @@ export async function executeInfer(isManualCall: boolean) {
   return true;
 }
 
+export async function enableInfer() {
+  // TODO: set active text editor etc.
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  try {
+    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`);
+    let inferCostRaw = JSON.parse(inferCostJsonString);
+    // TODO
+    console.log('infer-out found');
+  } catch (err) {
+    console.log('infer-out not found');
+    runInferOnProject();
+  }
+}
+
+export async function enableInferForCurrentFile() {
+  const tmpActiveTextEditor = vscode.window.activeTextEditor;
+  if (tmpActiveTextEditor) {
+    activeTextEditor = tmpActiveTextEditor;
+    activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
+  } else { return false; }
+
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  const pureSourceFileName = getSourceFileName(activeTextEditor).split(".")[0];
+  try {
+    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-${pureSourceFileName}/costs-report.json`);
+    let inferCostRaw = JSON.parse(inferCostJsonString);
+    // TODO
+    console.log('infer-out found');
+  } catch (err) {
+    console.log('infer-out not found');
+    if (!await runInferOnCurrentFile(true)) {
+      return false;
+    }
+
+    updateInferCostHistory();
+
+    if (costDegreeDecorationTypes.length === 0) {
+      initializeNameDecorationTypes();
+    }
+
+    createCodeLenses();
+    createEditorDecorators();
+  }
+}
+
 export function disableInfer() {
   disposeDecorationTypes();
   disposeCodeLensProviders();
@@ -78,6 +123,10 @@ function getCurrentWorkspaceFolder() {
   return workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
 }
 
+async function runInferOnProject() {
+  // TODO: implementation
+}
+
 async function runInferOnCurrentFile(isManualCall: boolean) {
   const sourceFilePath = activeTextEditor.document.fileName;
   if (!sourceFilePath.endsWith(".java")) {
@@ -102,7 +151,7 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
 
   let inferCost: InferCostItem[] = [];
   try {
-    const inferCostJsonString = fs.readFileSync(`${currentWorkspaceFolder}/infer-out-${pureSourceFileName}/costs-report.json`);
+    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-${pureSourceFileName}/costs-report.json`);
     let inferCostRaw = JSON.parse(inferCostJsonString);
     for (let inferCostRawItem of inferCostRaw) {
       inferCost.push({
@@ -128,11 +177,6 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
     console.log(err);
     console.log("InferCost file could not be read.");
     return false;
-  } finally {
-    // if (fs.existsSync(`./infer-out-${pureSourceFileName}`)) {
-    //   let inferOut = vscode.Uri.file(`./infer-out-${pureSourceFileName}`);
-    //   vscode.workspace.fs.delete(inferOut, {recursive: true});
-    // }
   }
   currentInferCost = inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
   inferCosts.set(sourceFileName, currentInferCost);
