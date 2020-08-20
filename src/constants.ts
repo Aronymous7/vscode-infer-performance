@@ -1,1 +1,0 @@
-export const INFER_OUTPUT_DIRECTORY = '/tmp/infer-out';

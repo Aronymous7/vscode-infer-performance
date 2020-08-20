@@ -29,8 +29,18 @@
         "category": "Infer"
       },
       {
+        "command": "infer-for-vscode.loadInfer",
+        "title": "Load Infer",
+        "category": "Infer"
+      },
+      {
         "command": "infer-for-vscode.disableInfer",
         "title": "Disable Infer",
+        "category": "Infer"
+      },
+      {
+        "command": "infer-for-vscode.cleanInferOut",
+        "title": "Clean Infer output",
         "category": "Infer"
       },
       {

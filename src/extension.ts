@@ -43,9 +43,21 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.loadInfer", () => {
+    // TODO
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disableInfer", () => {
     isExtensionEnabled = false;
     disableInfer();
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.cleanInferOut", () => {
+    // TODO
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
