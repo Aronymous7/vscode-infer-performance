@@ -34,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
       cancellable: false
     }, (progress, token) => {
       return new Promise(async resolve => {
-        const success = await executeInfer(true);
+        const success = await executeInfer();
         isExtensionEnabled = true;
         if (success) {
           vscode.window.showInformationMessage('Infer has been successfully executed.');
@@ -46,15 +46,40 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", async () => {
-    await enableInfer();
-    isExtensionEnabled = true;
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", () => {
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: "Executing Infer...",
+      cancellable: false
+    }, (progress, token) => {
+      return new Promise(async resolve => {
+        const success = await enableInfer();
+        isExtensionEnabled = true;
+        if (success) {
+          vscode.window.showInformationMessage('Infer has been enabled.');
+        }
+        resolve();
+      });
+    });
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForCurrentFile", () => {
-    enableInferForCurrentFile();
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: "Executing Infer...",
+      cancellable: false
+    }, (progress, token) => {
+      return new Promise(async resolve => {
+        const success = await enableInferForCurrentFile();
+        isExtensionEnabled = true;
+        if (success) {
+          vscode.window.showInformationMessage('Infer has been enabled.');
+        }
+        resolve();
+      });
+    });
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -130,7 +155,7 @@ export function activate(context: vscode.ExtensionContext) {
         cancellable: false
       }, (progress, token) => {
         return new Promise(async resolve => {
-          const success = await executeInfer(false);
+          const success = await executeInfer();
           if (success) {
             vscode.window.showInformationMessage('Infer has been successfully re-executed.');
           }

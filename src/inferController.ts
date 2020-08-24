@@ -27,14 +27,14 @@ export function setCurrentInferCost(newCurrentInferCost: InferCostItem[]) {
   currentInferCost = newCurrentInferCost;
 }
 
-export async function executeInfer(isManualCall: boolean) {
+export async function executeInfer() {
   const tmpActiveTextEditor = vscode.window.activeTextEditor;
   if (tmpActiveTextEditor) {
     activeTextEditor = tmpActiveTextEditor;
     activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
   } else { return false; }
 
-  if (!await runInferOnCurrentFile(isManualCall)) {
+  if (!await runInferOnCurrentFile()) {
     return false;
   }
 
@@ -62,6 +62,7 @@ export async function enableInfer() {
     console.log('infer-out not found');
     runInferOnProject();
   }
+  return true;
 }
 
 export async function enableInferForCurrentFile() {
@@ -71,28 +72,20 @@ export async function enableInferForCurrentFile() {
     activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
   } else { return false; }
 
-  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-  const pureSourceFileName = getSourceFileName(activeTextEditor).split(".")[0];
-  try {
-    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-${pureSourceFileName}/costs-report.json`);
-    let inferCostRaw = JSON.parse(inferCostJsonString);
-    // TODO
-    console.log('infer-out found');
-  } catch (err) {
-    console.log('infer-out not found');
-    if (!await runInferOnCurrentFile(true)) {
-      return false;
-    }
-
-    updateInferCostHistory();
-
-    if (costDegreeDecorationTypes.length === 0) {
-      initializeNameDecorationTypes();
-    }
-
-    createCodeLenses();
-    createEditorDecorators();
+  if (!await readInferOutputForCurrentFile()) {
+    if (!await runInferOnCurrentFile()) { return false; }
   }
+
+  updateInferCostHistory();
+
+  if (costDegreeDecorationTypes.length === 0) {
+    initializeNameDecorationTypes();
+  }
+
+  createCodeLenses();
+  createEditorDecorators();
+
+  return true;
 }
 
 export function disableInfer() {
@@ -127,27 +120,40 @@ async function runInferOnProject() {
   // TODO: implementation
 }
 
-async function runInferOnCurrentFile(isManualCall: boolean) {
+async function readInferOutputForProject() {
+  // TODO: implementation
+}
+
+async function runInferOnCurrentFile() {
   const sourceFilePath = activeTextEditor.document.fileName;
   if (!sourceFilePath.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
     console.log("Tried to execute Infer on non-Java file.");
     return false;
   }
+
   const sourceFileName = getSourceFileName(activeTextEditor);
   const pureSourceFileName = sourceFileName.split(".")[0];
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
     await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${pureSourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
-    if (isManualCall) {
-      vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
-    } else {
-      vscode.window.showInformationMessage("Automatic re-execution of Infer failed (probably due to compilation error).");
-    }
-    console.log("Execution of infer command failed (probably due to compilation error).");
+    vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
     return false;
   }
+
+  if (await readInferOutputForCurrentFile()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+async function readInferOutputForCurrentFile() {
+  const sourceFilePath = activeTextEditor.document.fileName;
+  const sourceFileName = getSourceFileName(activeTextEditor);
+  const pureSourceFileName = sourceFileName.split(".")[0];
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
   let inferCost: InferCostItem[] = [];
   try {
@@ -174,8 +180,6 @@ async function runInferOnCurrentFile(isManualCall: boolean) {
       });
     }
   } catch (err) {
-    console.log(err);
-    console.log("InferCost file could not be read.");
     return false;
   }
   currentInferCost = inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
