@@ -27,6 +27,10 @@ export function setCurrentInferCost(newCurrentInferCost: InferCostItem[]) {
   currentInferCost = newCurrentInferCost;
 }
 
+export function initializeActiveTextEditorTexts(editor: vscode.TextEditor) {
+  activeTextEditorTexts.set(editor.document.fileName, editor.document.getText());
+}
+
 function updateActiveTextEditorAndTexts() {
   const tmpActiveTextEditor = vscode.window.activeTextEditor;
   if (tmpActiveTextEditor) {
@@ -46,6 +50,7 @@ function getCurrentWorkspaceFolder() {
   return workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
 }
 
+// TODO: rework
 export async function executeInfer() {
   activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
 
@@ -72,7 +77,11 @@ export async function enableInfer() {
     if (!await runInferOnProject()) { return false; }
   }
 
-  updateInferCostHistory();
+  if (inferCostHistories.size === 0) {
+    initializeInferCostHistory();
+  } else {
+    updateInferCostHistory();
+  }
 
   if (costDegreeDecorationTypes.length === 0) {
     initializeNameDecorationTypes();
@@ -122,19 +131,34 @@ export function cleanInferOut() {
 }
 
 async function runInferOnProject() {
-  // TODO: implementation
-  return false;
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  try {
+    await exec(`cd ${currentWorkspaceFolder} && ./gradlew clean && infer --cost-only -- ./gradlew build`);
+  } catch (err) {
+    console.log(err);
+    vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
+    return false;
+  }
+
+  if (await readInferOutputForProject()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 async function readInferOutputForProject() {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
+  let sourceFileName = '';
   let inferCost: InferCostItem[] = [];
   try {
     const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`);
     let inferCostRaw = JSON.parse(inferCostJsonString);
-    let sourceFileName: string;
     for (let inferCostRawItem of inferCostRaw) {
+      if (inferCostRawItem.procedure_name === "<init>") {
+        continue;
+      }
       sourceFileName = inferCostRawItem.loc.file.split("/").pop()?.split(".")[0];
       inferCost.push({
         id: `${sourceFileName}:${inferCostRawItem.procedure_name}`,
@@ -164,15 +188,14 @@ async function readInferOutputForProject() {
   let fileInferCost: InferCostItem[] = [];
   for (const inferCostItem of inferCost) {
     if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
-
-      let sourceFileName = inferCostItem.id.split(":")[0];
       fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
       inferCosts.set(sourceFileName, fileInferCost);
-      sourceFilePath = inferCostItem.loc.file;
       fileInferCost = [inferCostItem];
     } else {
       fileInferCost.push(inferCostItem);
     }
+    sourceFileName = inferCostItem.id.split(":")[0];
+    sourceFilePath = inferCostItem.loc.file;
   }
   const tmpInferCost = inferCosts.get(getSourceFileName(activeTextEditor));
   if (tmpInferCost) {
@@ -195,6 +218,7 @@ async function runInferOnCurrentFile() {
   try {
     await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${sourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
+    console.log(err);
     vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
     return false;
   }
@@ -215,6 +239,9 @@ async function readInferOutputForCurrentFile() {
     const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-${sourceFileName}/costs-report.json`);
     let inferCostRaw = JSON.parse(inferCostJsonString);
     for (let inferCostRawItem of inferCostRaw) {
+      if (inferCostRawItem.procedure_name === "<init>") {
+        continue;
+      }
       inferCost.push({
         id: `${sourceFileName}:${inferCostRawItem.procedure_name}`,
         method_name: inferCostRawItem.procedure_name,
@@ -240,6 +267,16 @@ async function readInferOutputForCurrentFile() {
   currentInferCost = inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
   inferCosts.set(sourceFileName, currentInferCost);
   return true;
+}
+
+export function initializeInferCostHistory() {
+  let currentTime = new Date().toLocaleString('en-US', { hour12: false });
+  for (const inferCost of inferCosts) {
+    for (const inferCostItem of inferCost[1]) {
+      inferCostItem.timestamp = currentTime;
+      inferCostHistories.set(inferCostItem.id, [inferCostItem]);
+    }
+  }
 }
 
 function updateInferCostHistory() {

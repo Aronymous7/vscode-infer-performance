@@ -3,6 +3,8 @@ import { activeTextEditor, currentInferCost } from '../inferController';
 import { DetailCodelensProvider } from './detailCodelensProvider';
 import { OverviewCodelensProvider } from './overviewCodelensProvider';
 
+export let hasFileCodeLenses = new Map<string, boolean>();   // [sourceFilePath, hasCodeLenses]
+
 // [sourceFilePath, codeLensDisposable]
 let overviewCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
 let detailCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
@@ -14,7 +16,7 @@ export function disposeCodeLensProviders() {
   for (const codeLensProviderMapEntry of overviewCodeLensProviderDisposables) {
     codeLensProviderMapEntry[1].dispose();
   }
-
+  hasFileCodeLenses = new Map<string, boolean>();
 }
 
 export function createCodeLenses() {
@@ -22,10 +24,13 @@ export function createCodeLenses() {
   const docSelector: vscode.DocumentSelector = { pattern: sourceFilePath, language: 'java' };
 
   overviewCodeLensProviderDisposables.get(sourceFilePath)?.dispose();
+  detailCodeLensProviderDisposables.get(sourceFilePath)?.dispose();
+
   let codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new OverviewCodelensProvider());
   overviewCodeLensProviderDisposables.set(sourceFilePath, codeLensProviderDisposable);
 
-  detailCodeLensProviderDisposables.get(sourceFilePath)?.dispose();
   codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelector, new DetailCodelensProvider(currentInferCost));
   detailCodeLensProviderDisposables.set(sourceFilePath, codeLensProviderDisposable);
+
+  hasFileCodeLenses.set(sourceFilePath, true);
 }

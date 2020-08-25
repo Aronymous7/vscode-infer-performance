@@ -8,7 +8,9 @@ import {
   cleanInferOut,
   setCurrentInferCost,
   setActiveTextEditor,
+  initializeActiveTextEditorTexts,
   activeTextEditor,
+  activeTextEditorTexts,
   getSourceFileName
 } from './inferController';
 import {
@@ -18,6 +20,7 @@ import {
 } from './javaCodeHandler';
 import { createEditorDecorators } from './editorDecoratorController';
 import { createWebviewOverview, createWebviewHistory } from './webviewController';
+import { hasFileCodeLenses, createCodeLenses } from './codeLens/codelensController';
 
 const fs = require('fs');
 
@@ -139,6 +142,12 @@ export function activate(context: vscode.ExtensionContext) {
       const tmpInferCost = inferCosts.get(getSourceFileName(editor));
       if (tmpInferCost) {
         setCurrentInferCost(tmpInferCost);
+        if (!activeTextEditorTexts.has(editor.document.fileName)) {
+          initializeActiveTextEditorTexts(editor);
+        }
+        if (!hasFileCodeLenses.get(editor.document.fileName)) {
+          createCodeLenses();
+        }
         createEditorDecorators();
       }
     }
