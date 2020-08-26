@@ -25,12 +25,12 @@
     "commands": [
       {
         "command": "infer-for-vscode.executeInfer",
-        "title": "Execute Infer",
+        "title": "Re-execute Infer",
         "category": "Infer"
       },
       {
         "command": "infer-for-vscode.enableInfer",
-        "title": "Enable Infer",
+        "title": "Enable Infer for current project",
         "category": "Infer"
       },
       {

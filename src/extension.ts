@@ -36,8 +36,13 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", () => {
-    showExecutionProgress(enableInfer, "Infer has been enabled.");
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", async () => {
+    const buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build" }))?.trim();
+    if (!buildCommand) {
+      vscode.window.showInformationMessage("Please enter a valid build command.");
+      return false;
+    }
+    showExecutionProgress(enableInfer, "Infer has been enabled.", buildCommand);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -145,14 +150,19 @@ export function deactivate() {
   disposables = [];
 }
 
-function showExecutionProgress(executionFunction: Function, successMessage: string) {
+function showExecutionProgress(executionFunction: Function, successMessage: string, buildCommand?: string) {
   vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
     title: "Executing Infer...",
     cancellable: false
   }, (progress, token) => {
     return new Promise(async resolve => {
-      const success = await executionFunction();
+      let success: boolean;
+      if (buildCommand) {
+        success = await executionFunction(buildCommand);
+      } else {
+        success = await executionFunction();
+      }
       isExtensionEnabled = true;
       if (success) {
         vscode.window.showInformationMessage(successMessage);

@@ -70,11 +70,11 @@ export async function executeInfer() {
   return true;
 }
 
-export async function enableInfer() {
+export async function enableInfer(buildCommand: string) {
   if (!updateActiveTextEditorAndTexts()) { return false; }
 
   if (!await readInferOutputForProject()) {
-    if (!await runInferOnProject()) { return false; }
+    if (!await runInferOnProject(buildCommand)) { return false; }
   }
 
   if (inferCostHistories.size === 0) {
@@ -130,13 +130,13 @@ export function cleanInferOut() {
   });
 }
 
-async function runInferOnProject() {
+async function runInferOnProject(buildCommand: string) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
-    await exec(`cd ${currentWorkspaceFolder} && ./gradlew clean && infer --cost-only -- ./gradlew build`);
+    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -- ${buildCommand}`);
   } catch (err) {
     console.log(err);
-    vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
+    vscode.window.showInformationMessage("Execution of Infer failed (possible reasons: invalid build command, compilation error, etc.)");
     return false;
   }
 
@@ -219,7 +219,7 @@ async function runInferOnCurrentFile() {
     await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${sourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
     console.log(err);
-    vscode.window.showInformationMessage("Execution of Infer failed (probably due to compilation error).");
+    vscode.window.showInformationMessage("Execution of Infer failed (possibly due to compilation error)");
     return false;
   }
 
