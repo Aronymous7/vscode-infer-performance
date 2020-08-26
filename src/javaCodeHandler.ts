@@ -13,7 +13,8 @@ function updateSignificantCodeChangeRegex() {
   if (methodWhitelist.length !== 0) {
     methodWhitelistString = '|' + methodWhitelist.join('|');
   }
-  significantCodeChangeRegex = new RegExp(`(while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\\W+(if|switch${methodWhitelistString}))\\(.*\\))`, 'g');
+  significantCodeChangeRegex = new RegExp(`while *\\(.+\\)|for *\\(.+\\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\\W+(if|switch${methodWhitelistString}))\\((.|\n)*\\)`, 'g');
+  // significantCodeChangeRegex = new RegExp(/while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\W+(if|switch))\([^\)]*\)/g);
 }
 
 export function getMethodDeclarations(document: vscode.TextDocument) {
@@ -24,9 +25,9 @@ export function getMethodDeclarations(document: vscode.TextDocument) {
   while ((matches = regex.exec(text)) !== null) {
     const line = document.lineAt(document.positionAt(matches.index).line);
 
-    const declarationIndexOf = line.text.indexOf(matches[0]);
-    const declarationStartPosition = new vscode.Position(line.lineNumber, declarationIndexOf);
-    const declarationEndPosition = new vscode.Position(line.lineNumber, declarationIndexOf + matches[0].length);
+    const declarationLines = matches[0].split("\n");
+    const declarationStartPosition = new vscode.Position(line.lineNumber, 0);
+    const declarationEndPosition = new vscode.Position(line.lineNumber + declarationLines.length - 1, declarationLines[declarationLines.length - 1].length);
     const declarationRange = new vscode.Range(declarationStartPosition, declarationEndPosition);
 
     const nameIndexOf = line.text.indexOf(matches[1]);
