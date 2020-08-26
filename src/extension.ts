@@ -31,58 +31,19 @@ export let isExtensionEnabled = false;
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
-    vscode.window.withProgress({
-      location: vscode.ProgressLocation.Notification,
-      title: "Executing Infer...",
-      cancellable: false
-    }, (progress, token) => {
-      return new Promise(async resolve => {
-        const success = await executeInfer();
-        isExtensionEnabled = true;
-        if (success) {
-          vscode.window.showInformationMessage('Infer has been successfully executed.');
-        }
-        resolve();
-      });
-    });
+    showExecutionProgress(executeInfer, "Infer has been successfully executed.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", () => {
-    vscode.window.withProgress({
-      location: vscode.ProgressLocation.Notification,
-      title: "Executing Infer...",
-      cancellable: false
-    }, (progress, token) => {
-      return new Promise(async resolve => {
-        const success = await enableInfer();
-        isExtensionEnabled = true;
-        if (success) {
-          vscode.window.showInformationMessage('Infer has been enabled.');
-        }
-        resolve();
-      });
-    });
+    showExecutionProgress(enableInfer, "Infer has been enabled.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForCurrentFile", () => {
-    vscode.window.withProgress({
-      location: vscode.ProgressLocation.Notification,
-      title: "Executing Infer...",
-      cancellable: false
-    }, (progress, token) => {
-      return new Promise(async resolve => {
-        const success = await enableInferForCurrentFile();
-        isExtensionEnabled = true;
-        if (success) {
-          vscode.window.showInformationMessage('Infer has been enabled.');
-        }
-        resolve();
-      });
-    });
+    showExecutionProgress(enableInferForCurrentFile, "Infer has been enabled for current file.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -182,4 +143,21 @@ export function deactivate() {
     disposables.forEach(item => item.dispose());
   }
   disposables = [];
+}
+
+function showExecutionProgress(executionFunction: Function, successMessage: string) {
+  vscode.window.withProgress({
+    location: vscode.ProgressLocation.Notification,
+    title: "Executing Infer...",
+    cancellable: false
+  }, (progress, token) => {
+    return new Promise(async resolve => {
+      const success = await executionFunction();
+      isExtensionEnabled = true;
+      if (success) {
+        vscode.window.showInformationMessage(successMessage);
+      }
+      resolve();
+    });
+  });
 }
