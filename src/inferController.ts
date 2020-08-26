@@ -77,11 +77,7 @@ export async function enableInfer(buildCommand: string) {
     if (!await runInferOnProject(buildCommand)) { return false; }
   }
 
-  if (inferCostHistories.size === 0) {
-    initializeInferCostHistory();
-  } else {
-    updateInferCostHistory();
-  }
+  updateInferCostHistory();
 
   if (costDegreeDecorationTypes.length === 0) {
     initializeNameDecorationTypes();
@@ -269,29 +265,21 @@ async function readInferOutputForCurrentFile() {
   return true;
 }
 
-export function initializeInferCostHistory() {
+function updateInferCostHistory() {
   let currentTime = new Date().toLocaleString('en-US', { hour12: false });
   for (const inferCost of inferCosts) {
     for (const inferCostItem of inferCost[1]) {
+      let costHistory: InferCostItem[] | undefined = [];
+      if (inferCostHistories.has(inferCostItem.id)) {
+        costHistory = inferCostHistories.get(inferCostItem.id);
+      }
+      if (!costHistory) { return; }
+      if ((costHistory.length > 0) && (costHistory[0].exec_cost.polynomial === inferCostItem.exec_cost.polynomial)) {
+        continue;
+      }
       inferCostItem.timestamp = currentTime;
-      inferCostHistories.set(inferCostItem.id, [inferCostItem]);
+      costHistory.unshift(inferCostItem);
+      inferCostHistories.set(inferCostItem.id, costHistory);
     }
-  }
-}
-
-function updateInferCostHistory() {
-  let currentTime = new Date().toLocaleString('en-US', { hour12: false });
-  for (const inferCostItem of currentInferCost) {
-    let costHistory: InferCostItem[] | undefined = [];
-    if (inferCostHistories.has(inferCostItem.id)) {
-      costHistory = inferCostHistories.get(inferCostItem.id);
-    }
-    if (!costHistory) { return; }
-    if ((costHistory.length > 0) && (costHistory[0].exec_cost.polynomial === inferCostItem.exec_cost.polynomial)) {
-      continue;
-    }
-    inferCostItem.timestamp = currentTime;
-    costHistory.unshift(inferCostItem);
-    inferCostHistories.set(inferCostItem.id, costHistory);
   }
 }
