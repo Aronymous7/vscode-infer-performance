@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 export interface InferCostItem {
-  readonly id: string;    // `${sourceFileName}:${methodName}`
+  readonly id: string;
   readonly method_name: string;
   timestamp?: string;     // used for cost history
   readonly loc: {

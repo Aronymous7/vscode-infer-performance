@@ -146,7 +146,6 @@ async function runInferOnProject(buildCommand: string) {
 async function readInferOutputForProject() {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
-  let sourceFileName = '';
   let inferCost: InferCostItem[] = [];
   try {
     const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`);
@@ -155,9 +154,8 @@ async function readInferOutputForProject() {
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
       }
-      sourceFileName = inferCostRawItem.loc.file.split("/").pop()?.split(".")[0];
       inferCost.push({
-        id: `${sourceFileName}:${inferCostRawItem.procedure_name}`,
+        id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
         loc: {
           file: inferCostRawItem.loc.file,
@@ -181,17 +179,19 @@ async function readInferOutputForProject() {
 
   inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.file.localeCompare(b.loc.file));
   let sourceFilePath: string | undefined;
+  let sourceFileName: string | undefined;
   let fileInferCost: InferCostItem[] = [];
   for (const inferCostItem of inferCost) {
     if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
+      if (!sourceFileName) { continue; }
       fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
       inferCosts.set(sourceFileName, fileInferCost);
       fileInferCost = [inferCostItem];
     } else {
       fileInferCost.push(inferCostItem);
     }
-    sourceFileName = inferCostItem.id.split(":")[0];
     sourceFilePath = inferCostItem.loc.file;
+    sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
   }
   const tmpInferCost = inferCosts.get(getSourceFileName(activeTextEditor));
   if (tmpInferCost) {
@@ -239,7 +239,7 @@ async function readInferOutputForCurrentFile() {
         continue;
       }
       inferCost.push({
-        id: `${sourceFileName}:${inferCostRawItem.procedure_name}`,
+        id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
         loc: {
           file: inferCostRawItem.loc.file,
