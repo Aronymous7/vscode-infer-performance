@@ -32,12 +32,20 @@ export let executionMode: ExecutionMode;
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
+    if (!isExtensionEnabled) {
+      vscode.window.showInformationMessage("Please enable Infer before re-executing.");
+      return;
+    }
     showExecutionProgress(executeInfer, "Infer has been successfully executed.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForProject", async () => {
+    if (isExtensionEnabled && executionMode === ExecutionMode.Project) {
+      vscode.window.showInformationMessage("Infer is already enabled for current project (use re-execution command to re-execute)");
+      return;
+    }
     executionMode = ExecutionMode.Project;
     let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
     if (!buildCommand) {
@@ -45,8 +53,8 @@ export function activate(context: vscode.ExtensionContext) {
       if (buildCommand) {
         vscode.workspace.getConfiguration('infer-for-vscode').update('buildCommand', buildCommand, true);
       } else {
-        vscode.window.showInformationMessage("Please enter a valid build command.");
-        return false;
+        vscode.window.showErrorMessage("No valid build command entered");
+        return;
       }
     }
     showExecutionProgress(enableInfer, "Infer has been enabled.", buildCommand);
@@ -55,6 +63,10 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForCurrentFile", () => {
+    if (isExtensionEnabled && executionMode === ExecutionMode.File) {
+      vscode.window.showInformationMessage("Infer is already enabled for current file (use re-execution command to re-execute)");
+      return;
+    }
     executionMode = ExecutionMode.File;
     showExecutionProgress(enableInfer, "Infer has been enabled for current file.");
   });
@@ -62,6 +74,10 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disableInfer", () => {
+    if (!isExtensionEnabled) {
+      vscode.window.showInformationMessage("Infer is not enabled.");
+      return;
+    }
     isExtensionEnabled = false;
     disableInfer();
   });
@@ -70,24 +86,6 @@ export function activate(context: vscode.ExtensionContext) {
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.cleanInferOut", () => {
     cleanInferOut();
-  });
-  disposables.push(disposableCommand);
-  context.subscriptions.push(disposableCommand);
-
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensAction", (methodKey: string) => {
-    createWebviewHistory(methodKey);
-  });
-  disposables.push(disposableCommand);
-  context.subscriptions.push(disposableCommand);
-
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensError", () => {
-    vscode.window.showInformationMessage("Please save and re-execute Infer.");
-  });
-  disposables.push(disposableCommand);
-  context.subscriptions.push(disposableCommand);
-
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string) => {
-    createWebviewOverview(selectedMethodName);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -106,6 +104,24 @@ export function activate(context: vscode.ExtensionContext) {
     if (methodName) {
       removeMethodFromWhitelist(methodName);
     }
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensAction", (methodKey: string) => {
+    createWebviewHistory(methodKey);
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensError", () => {
+    vscode.window.showInformationMessage("Please save and re-execute Infer.");
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string) => {
+    createWebviewOverview(selectedMethodName);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

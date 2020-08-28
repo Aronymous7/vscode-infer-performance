@@ -57,7 +57,7 @@ export async function executeInfer() {
   if (executionMode === ExecutionMode.Project) {
     const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
     if (!buildCommand) {
-      vscode.window.showInformationMessage("Build command could not be found in VSCode config");
+      vscode.window.showErrorMessage("Build command could not be found in VSCode config");
       return false;
     }
     if (!await runInferOnProject(buildCommand)) { return false; }
@@ -124,7 +124,7 @@ async function runInferOnProject(buildCommand: string) {
     await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive -- ${buildCommand}`);
   } catch (err) {
     console.log(err);
-    vscode.window.showInformationMessage("Execution of Infer failed (possible reasons: invalid build command, compilation error, etc.)");
+    vscode.window.showErrorMessage("Execution of Infer failed (possible reasons: invalid build command, compilation error, project folder not opened in VSCode, etc.)");
     return false;
   }
 
@@ -207,7 +207,7 @@ async function runInferOnCurrentFile() {
     await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${sourceFileName} -- javac ${sourceFilePath}`);
   } catch (err) {
     console.log(err);
-    vscode.window.showInformationMessage("Execution of Infer failed (possibly due to compilation error)");
+    vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
     return false;
   }
 
