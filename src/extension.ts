@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
+import { ExecutionMode } from './types';
 import {
   inferCosts,
   executeInfer,
-  enableInferForProject,
-  enableInferForCurrentFile,
+  enableInfer,
   disableInfer,
   cleanInferOut,
   setCurrentInferCost,
@@ -27,6 +27,7 @@ const fs = require('fs');
 let disposables: vscode.Disposable[] = [];
 
 export let isExtensionEnabled = false;
+export let executionMode: ExecutionMode;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -36,7 +37,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", async () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForProject", async () => {
+    executionMode = ExecutionMode.Project;
     let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
     if (!buildCommand) {
       buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build" }))?.trim();
@@ -47,13 +49,14 @@ export function activate(context: vscode.ExtensionContext) {
         return false;
       }
     }
-    showExecutionProgress(enableInferForProject, "Infer has been enabled.", buildCommand);
+    showExecutionProgress(enableInfer, "Infer has been enabled.", buildCommand);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForCurrentFile", () => {
-    showExecutionProgress(enableInferForCurrentFile, "Infer has been enabled for current file.");
+    executionMode = ExecutionMode.File;
+    showExecutionProgress(enableInfer, "Infer has been enabled for current file.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

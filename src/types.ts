@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
 
+export enum ExecutionMode {
+  Project,
+  File
+}
+
 export interface InferCostItem {
   readonly id: string;
   readonly method_name: string;

@@ -29,7 +29,7 @@
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.enableInfer",
+        "command": "infer-for-vscode.enableInferForProject",
         "title": "Enable Infer for current project",
         "category": "Infer"
       },

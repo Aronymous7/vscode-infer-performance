@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { InferCostItem } from './types';
+import { InferCostItem, ExecutionMode } from './types';
+import { executionMode } from './extension';
 import {
   costDegreeDecorationTypes,
   initializeNameDecorationTypes,
@@ -50,52 +51,45 @@ function getCurrentWorkspaceFolder() {
   return workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
 }
 
-// TODO: rework
 export async function executeInfer() {
   savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
 
-  if (!await runInferOnCurrentFile()) {
-    return false;
-  }
-
-  updateInferCostHistory();
-
-  if (costDegreeDecorationTypes.length === 0) {
-    initializeNameDecorationTypes();
-  }
-
-  createCodeLenses();
-  createEditorDecorators();
-
-  return true;
-}
-
-export async function enableInferForProject(buildCommand: string) {
-  if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
-
-  if (!await readInferOutputForProject()) {
+  if (executionMode === ExecutionMode.Project) {
+    const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
+    if (!buildCommand) {
+      vscode.window.showInformationMessage("Build command could not be found in VSCode config");
+      return false;
+    }
     if (!await runInferOnProject(buildCommand)) { return false; }
-  }
+  } else if (executionMode === ExecutionMode.File) {
+    if (!await runInferOnCurrentFile()) { return false; }
+  } else { return false; }
 
-  updateInferCostHistory();
-
-  if (costDegreeDecorationTypes.length === 0) {
-    initializeNameDecorationTypes();
-  }
-
-  createCodeLenses();
-  createEditorDecorators();
+  createInferAnnotations();
 
   return true;
 }
 
-export async function enableInferForCurrentFile() {
+export async function enableInfer(buildCommand?: string) {
   if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
 
-  if (!await readInferOutputForCurrentFile()) {
-    if (!await runInferOnCurrentFile()) { return false; }
-  }
+  if (executionMode === ExecutionMode.Project) {
+    if (!buildCommand) { return false; }
+    if (!await readInferOutputForProject()) {
+      if (!await runInferOnProject(buildCommand)) { return false; }
+    }
+  } else if (executionMode === ExecutionMode.File) {
+    if (!await readInferOutputForCurrentFile()) {
+      if (!await runInferOnCurrentFile()) { return false; }
+    }
+  } else { return false; }
 
+  createInferAnnotations();
+
+  return true;
+}
+
+function createInferAnnotations() {
   updateInferCostHistory();
 
   if (costDegreeDecorationTypes.length === 0) {
@@ -104,8 +98,6 @@ export async function enableInferForCurrentFile() {
 
   createCodeLenses();
   createEditorDecorators();
-
-  return true;
 }
 
 export function disableInfer() {
@@ -129,7 +121,7 @@ export function cleanInferOut() {
 async function runInferOnProject(buildCommand: string) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
-    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -- ${buildCommand}`);
+    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive -- ${buildCommand}`);
   } catch (err) {
     console.log(err);
     vscode.window.showInformationMessage("Execution of Infer failed (possible reasons: invalid build command, compilation error, etc.)");
