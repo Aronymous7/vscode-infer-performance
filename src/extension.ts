@@ -37,10 +37,15 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInfer", async () => {
-    const buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build" }))?.trim();
+    let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
     if (!buildCommand) {
-      vscode.window.showInformationMessage("Please enter a valid build command.");
-      return false;
+      buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build" }))?.trim();
+      if (buildCommand) {
+        vscode.workspace.getConfiguration('infer-for-vscode').update('buildCommand', buildCommand, true);
+      } else {
+        vscode.window.showInformationMessage("Please enter a valid build command.");
+        return false;
+      }
     }
     showExecutionProgress(enableInfer, "Infer has been enabled.", buildCommand);
   });

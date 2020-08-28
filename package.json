@@ -73,6 +73,10 @@
           "type": "boolean",
           "default": false,
           "description": "Enable automatic re-execution of Infer when significant code changes get saved. Since this includes at least partial re-compilation, use with caution for larger projects."
+        },
+        "infer-for-vscode.buildCommand": {
+          "type": "string",
+          "description": "The build command to be used by Infer for compiling your project."
         }
       }
     }
