@@ -120,7 +120,8 @@ export function activate(context: vscode.ExtensionContext) {
   }, null, context.subscriptions);
 
   vscode.workspace.onDidSaveTextDocument(document => {
-    if (document === activeTextEditor.document &&
+    if (vscode.workspace.getConfiguration('infer-for-vscode').get('automaticReExecution', false) &&
+        document === activeTextEditor.document &&
         isExtensionEnabled &&
         isSignificantCodeChange(document.getText())) {
 

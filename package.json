@@ -68,6 +68,11 @@
           "description": "Whitelisted methods that won't lead to an automatic re-execution of Infer when a call to them is added or removed somewhere in your code.",
           "examples": [["cheapMethod1", "cheapMethod2"]],
           "uniqueItems": true
+        },
+        "infer-for-vscode.automaticReExecution": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automatic re-execution of Infer when significant code changes get saved. Since this includes at least partial re-compilation, use with caution for larger projects."
         }
       }
     }
