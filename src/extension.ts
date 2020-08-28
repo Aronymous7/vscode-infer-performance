@@ -2,15 +2,15 @@ import * as vscode from 'vscode';
 import {
   inferCosts,
   executeInfer,
-  enableInfer,
+  enableInferForProject,
   enableInferForCurrentFile,
   disableInfer,
   cleanInferOut,
   setCurrentInferCost,
   setActiveTextEditor,
-  initializeActiveTextEditorTexts,
+  updateSavedDocumentText,
   activeTextEditor,
-  activeTextEditorTexts,
+  savedDocumentTexts,
   getSourceFileName
 } from './inferController';
 import {
@@ -47,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
         return false;
       }
     }
-    showExecutionProgress(enableInfer, "Infer has been enabled.", buildCommand);
+    showExecutionProgress(enableInferForProject, "Infer has been enabled.", buildCommand);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -113,8 +113,8 @@ export function activate(context: vscode.ExtensionContext) {
       const tmpInferCost = inferCosts.get(getSourceFileName(editor));
       if (tmpInferCost) {
         setCurrentInferCost(tmpInferCost);
-        if (!activeTextEditorTexts.has(editor.document.fileName)) {
-          initializeActiveTextEditorTexts(editor);
+        if (!savedDocumentTexts.has(editor.document.fileName)) {
+          updateSavedDocumentText(editor);
         }
         if (!hasFileCodeLenses.get(editor.document.fileName)) {
           createCodeLenses();

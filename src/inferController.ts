@@ -14,7 +14,7 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
 export let activeTextEditor: vscode.TextEditor;
-export let activeTextEditorTexts = new Map<string, string>();        // [document.fileName, text]
+export let savedDocumentTexts = new Map<string, string>();        // [document.fileName, text]
 
 export let currentInferCost: InferCostItem[];
 export let inferCosts = new Map<string, InferCostItem[]>();          // [sourceFileName, inferCost]
@@ -27,15 +27,15 @@ export function setCurrentInferCost(newCurrentInferCost: InferCostItem[]) {
   currentInferCost = newCurrentInferCost;
 }
 
-export function initializeActiveTextEditorTexts(editor: vscode.TextEditor) {
-  activeTextEditorTexts.set(editor.document.fileName, editor.document.getText());
+export function updateSavedDocumentText(editor: vscode.TextEditor) {
+  savedDocumentTexts.set(editor.document.fileName, editor.document.getText());
 }
 
-function updateActiveTextEditorAndTexts() {
+function updateActiveTextEditorAndSavedDocumentText() {
   const tmpActiveTextEditor = vscode.window.activeTextEditor;
   if (tmpActiveTextEditor) {
     activeTextEditor = tmpActiveTextEditor;
-    activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
+    savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
     return true;
   } else { return false; }
 }
@@ -52,7 +52,7 @@ function getCurrentWorkspaceFolder() {
 
 // TODO: rework
 export async function executeInfer() {
-  activeTextEditorTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
+  savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
 
   if (!await runInferOnCurrentFile()) {
     return false;
@@ -70,8 +70,8 @@ export async function executeInfer() {
   return true;
 }
 
-export async function enableInfer(buildCommand: string) {
-  if (!updateActiveTextEditorAndTexts()) { return false; }
+export async function enableInferForProject(buildCommand: string) {
+  if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
 
   if (!await readInferOutputForProject()) {
     if (!await runInferOnProject(buildCommand)) { return false; }
@@ -90,7 +90,7 @@ export async function enableInfer(buildCommand: string) {
 }
 
 export async function enableInferForCurrentFile() {
-  if (!updateActiveTextEditorAndTexts()) { return false; }
+  if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
 
   if (!await readInferOutputForCurrentFile()) {
     if (!await runInferOnCurrentFile()) { return false; }
@@ -113,7 +113,7 @@ export function disableInfer() {
   disposeCodeLensProviders();
   disposeWebviews();
   inferCosts = new Map<string, InferCostItem[]>();
-  activeTextEditorTexts = new Map<string, string>();
+  savedDocumentTexts = new Map<string, string>();
 }
 
 export function cleanInferOut() {

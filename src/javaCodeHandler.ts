@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { InferCostItem, MethodDeclaration, LineDiff } from './types';
-import { activeTextEditor, activeTextEditorTexts } from './inferController';
+import { activeTextEditor, savedDocumentTexts } from './inferController';
 
 const Diff = require('diff');
 
@@ -42,7 +42,7 @@ export function getMethodDeclarations(document: vscode.TextDocument) {
 }
 
 export function isSignificantCodeChange(savedText: string) {
-  const previousText = activeTextEditorTexts.get(activeTextEditor.document.fileName);
+  const previousText = savedDocumentTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
 
   updateSignificantCodeChangeRegex();
