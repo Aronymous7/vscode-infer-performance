@@ -41,6 +41,7 @@ export function findMethodDeclarations(document: vscode.TextDocument) {
       methodDeclarations.push({ name: matches[1], declarationRange: declarationRange, nameRange: nameRange });
     }
   }
+  return methodDeclarations;
 }
 
 export function isSignificantCodeChange(savedText: string) {

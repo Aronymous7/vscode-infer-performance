@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { isExtensionEnabled } from '../extension';
-import { getMethodDeclarations } from '../javaCodeHandler';
+import { getMethodDeclarations, findMethodDeclarations } from '../javaCodeHandler';
 
 export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
@@ -18,7 +18,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     if (isExtensionEnabled) {
       this.document = document;
-      const methodDeclarations = getMethodDeclarations();
+      const methodDeclarations = findMethodDeclarations(this.document);
       this.codeLenses = [];
       methodDeclarations.forEach(methodDeclaration => {
         this.codeLenses.push(new vscode.CodeLens(methodDeclaration.declarationRange));
@@ -31,7 +31,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
     if (isExtensionEnabled) {
       if (!this.document) { return; }
-      const methodDeclarations = getMethodDeclarations();
+      const methodDeclarations = findMethodDeclarations(this.document);
       let selectedMethodName = "";
       methodDeclarations.some(methodDeclaration => {
         if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
