@@ -76,7 +76,8 @@
         },
         "infer-for-vscode.buildCommand": {
           "type": "string",
-          "description": "The build command to be used by Infer for compiling your project."
+          "description": "The build command to be used by Infer for compiling your project. Currently supported build tools: javac, maven, ant, gradle",
+          "pattern": "^(javac|mvn|ant|gradle|\\.\\/gradlew).*"
         }
       }
     }

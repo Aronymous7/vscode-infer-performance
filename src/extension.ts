@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ExecutionMode } from './types';
+import { validateBuildCommand } from './validators';
 import {
   inferCosts,
   executeInfer,
@@ -50,10 +51,10 @@ export function activate(context: vscode.ExtensionContext) {
     let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
     if (!buildCommand) {
       buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build" }))?.trim();
-      if (buildCommand) {
+      if (buildCommand && validateBuildCommand(buildCommand)) {
         vscode.workspace.getConfiguration('infer-for-vscode').update('buildCommand', buildCommand, true);
       } else {
-        vscode.window.showErrorMessage("No valid build command entered");
+        vscode.window.showErrorMessage("Invalid build command entered. Currently supported build tools: javac, maven, ant, gradle");
         return;
       }
     }
