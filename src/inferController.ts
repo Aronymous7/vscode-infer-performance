@@ -9,6 +9,7 @@ import {
 } from './editorDecoratorController';
 import { createCodeLenses, disposeCodeLensProviders } from './codeLens/codelensController';
 import { disposeWebviews } from './webviewController';
+import { findMethodDeclarations } from './javaCodeHandler';
 
 const fs = require('fs');
 const util = require('util');
@@ -90,11 +91,12 @@ export async function enableInfer(buildCommand?: string) {
 }
 
 function createInferAnnotations() {
-  updateInferCostHistory();
-
   if (costDegreeDecorationTypes.length === 0) {
     initializeNameDecorationTypes();
   }
+
+  updateInferCostHistory();
+  findMethodDeclarations(activeTextEditor.document);
 
   createCodeLenses();
   createEditorDecorators();

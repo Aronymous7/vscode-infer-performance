@@ -4,6 +4,8 @@ import { activeTextEditor, savedDocumentTexts } from './inferController';
 
 const Diff = require('diff');
 
+let methodDeclarations: MethodDeclaration[] = [];
+
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|public [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
 let significantCodeChangeRegex: RegExp;
 
@@ -17,10 +19,14 @@ function updateSignificantCodeChangeRegex() {
   // significantCodeChangeRegex = new RegExp(/while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\W+(if|switch))\([^\)]*\)/g);
 }
 
-export function getMethodDeclarations(document: vscode.TextDocument) {
+export function getMethodDeclarations() {
+  return methodDeclarations;
+}
+
+export function findMethodDeclarations(document: vscode.TextDocument) {
   const regex = new RegExp(methodDeclarationRegex);
   const text = document.getText();
-  let methodDeclarations: MethodDeclaration[] = [];
+  methodDeclarations = [];
   let matches;
   while ((matches = regex.exec(text)) !== null) {
     const line = document.lineAt(document.positionAt(matches.index).line);
@@ -38,7 +44,6 @@ export function getMethodDeclarations(document: vscode.TextDocument) {
       methodDeclarations.push({ name: matches[1], declarationRange: declarationRange, nameRange: nameRange });
     }
   }
-  return methodDeclarations;
 }
 
 export function isSignificantCodeChange(savedText: string) {

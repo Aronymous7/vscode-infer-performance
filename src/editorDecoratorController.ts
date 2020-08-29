@@ -40,7 +40,7 @@ export function initializeNameDecorationTypes() {
 }
 
 export function createEditorDecorators() {
-  const methodDeclarations = getMethodDeclarations(activeTextEditor.document);
+  const methodDeclarations = getMethodDeclarations();
 
   const costDegreeDecorations: vscode.DecorationOptions[][] = [];
   for (let i = 0; i < costDegreeDecorationTypesLength; i++) {

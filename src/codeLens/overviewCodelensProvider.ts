@@ -18,7 +18,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     if (isExtensionEnabled) {
       this.document = document;
-      const methodDeclarations = getMethodDeclarations(document);
+      const methodDeclarations = getMethodDeclarations();
       this.codeLenses = [];
       methodDeclarations.forEach(methodDeclaration => {
         this.codeLenses.push(new vscode.CodeLens(methodDeclaration.declarationRange));
@@ -31,7 +31,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
     if (isExtensionEnabled) {
       if (!this.document) { return; }
-      const methodDeclarations = getMethodDeclarations(this.document);
+      const methodDeclarations = getMethodDeclarations();
       let selectedMethodName = "";
       methodDeclarations.some(methodDeclaration => {
         if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
