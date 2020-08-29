@@ -9,7 +9,7 @@ import {
 } from './editorDecoratorController';
 import { createCodeLenses, disposeCodeLensProviders } from './codeLens/codelensController';
 import { disposeWebviews } from './webviewController';
-import { findMethodDeclarations } from './javaCodeHandler';
+import { findMethodDeclarations, setConstantMethodsStale } from './javaCodeHandler';
 
 const fs = require('fs');
 const util = require('util');
@@ -131,6 +131,7 @@ async function runInferOnProject(buildCommand: string) {
   }
 
   if (await readInferOutputForProject()) {
+    setConstantMethodsStale();
     return true;
   } else {
     return false;
@@ -157,12 +158,12 @@ async function readInferOutputForProject() {
         },
         alloc_cost: {
           polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: inferCostRawItem.alloc_cost.hum.hum_degree,
+          degree: +inferCostRawItem.alloc_cost.hum.hum_degree,
           big_o: inferCostRawItem.alloc_cost.hum.big_o
         },
         exec_cost: {
           polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: inferCostRawItem.exec_cost.hum.hum_degree,
+          degree: +inferCostRawItem.exec_cost.hum.hum_degree,
           big_o: inferCostRawItem.exec_cost.hum.big_o
         }
       });
@@ -189,7 +190,7 @@ async function readInferOutputForProject() {
   }
   const tmpInferCost = inferCosts.get(getSourceFileName(activeTextEditor));
   if (tmpInferCost) {
-    currentInferCost = tmpInferCost;
+    setCurrentInferCost(tmpInferCost);
   } else { return false; }
 
   return true;
@@ -214,6 +215,7 @@ async function runInferOnCurrentFile() {
   }
 
   if (await readInferOutputForCurrentFile()) {
+    setConstantMethodsStale();
     return true;
   } else {
     return false;
@@ -241,12 +243,12 @@ async function readInferOutputForCurrentFile() {
         },
         alloc_cost: {
           polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: inferCostRawItem.alloc_cost.hum.hum_degree,
+          degree: +inferCostRawItem.alloc_cost.hum.hum_degree,
           big_o: inferCostRawItem.alloc_cost.hum.big_o
         },
         exec_cost: {
           polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: inferCostRawItem.exec_cost.hum.hum_degree,
+          degree: +inferCostRawItem.exec_cost.hum.hum_degree,
           big_o: inferCostRawItem.exec_cost.hum.big_o
         }
       });
@@ -254,7 +256,7 @@ async function readInferOutputForCurrentFile() {
   } catch (err) {
     return false;
   }
-  currentInferCost = inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
+  setCurrentInferCost(inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum));
   inferCosts.set(sourceFileName, currentInferCost);
   return true;
 }
