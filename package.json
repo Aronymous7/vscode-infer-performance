@@ -24,23 +24,23 @@
   "contributes": {
     "commands": [
       {
-        "command": "infer-for-vscode.executeInfer",
-        "title": "Re-execute Infer",
+        "command": "infer-for-vscode.execute",
+        "title": "Re-execute performance analysis",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.enableInferForProject",
-        "title": "Enable Infer for current project",
+        "command": "infer-for-vscode.enableForProject",
+        "title": "Enable performance analysis for current project",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.enableInferForCurrentFile",
-        "title": "Enable Infer only for current file",
+        "command": "infer-for-vscode.enableForCurrentFile",
+        "title": "Enable performance analysis only for current file",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.disableInfer",
-        "title": "Disable Infer",
+        "command": "infer-for-vscode.disable",
+        "title": "Disable performance analysis",
         "category": "Infer"
       },
       {

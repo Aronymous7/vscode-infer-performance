@@ -32,7 +32,7 @@ export let executionMode: ExecutionMode;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.executeInfer", () => {
+  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.execute", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
       return;
@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForProject", async () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForProject", async () => {
     if (isExtensionEnabled && executionMode === ExecutionMode.Project) {
       vscode.window.showInformationMessage("Infer is already enabled for current project (use re-execution command to re-execute)");
       return;
@@ -63,7 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableInferForCurrentFile", () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForCurrentFile", () => {
     if (isExtensionEnabled && executionMode === ExecutionMode.File) {
       vscode.window.showInformationMessage("Infer is already enabled for current file (use re-execution command to re-execute)");
       return;
@@ -74,7 +74,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disableInfer", () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disable", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Infer is not enabled.");
       return;
