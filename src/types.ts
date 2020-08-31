@@ -8,9 +8,9 @@ export enum ExecutionMode {
 export interface InferCostItem {
   readonly id: string;
   readonly method_name: string;
-  timestamp?: string;     // used for cost history
+  timestamp?: string;       // used for cost history
   readonly loc: {
-    readonly file: string;
+    readonly file: string;  // absolute path
     readonly lnum: number;
   };
   readonly alloc_cost: {

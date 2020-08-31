@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { MethodDeclaration, LineDiff, InferCostItem } from './types';
-import { activeTextEditor, savedDocumentTexts, inferCosts } from './inferController';
+import { MethodDeclaration, LineDiff } from './types';
+import { activeTextEditor, savedDocumentTexts } from './inferController';
 
 const Diff = require('diff');
 

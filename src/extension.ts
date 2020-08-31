@@ -12,7 +12,6 @@ import {
   updateSavedDocumentText,
   activeTextEditor,
   savedDocumentTexts,
-  getSourceFileName
 } from './inferController';
 import {
   isSignificantCodeChange,
@@ -131,7 +130,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.onDidChangeActiveTextEditor(editor => {
     if (editor) {
       setActiveTextEditor(editor);
-      const tmpInferCost = inferCosts.get(getSourceFileName(editor));
+      const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
       if (tmpInferCost) {
         setCurrentInferCost(tmpInferCost);
         if (!savedDocumentTexts.has(editor.document.fileName)) {

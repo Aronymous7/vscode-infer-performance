@@ -19,7 +19,7 @@ export let activeTextEditor: vscode.TextEditor;
 export let savedDocumentTexts = new Map<string, string>();        // [document.fileName, text]
 
 export let currentInferCost: InferCostItem[];
-export let inferCosts = new Map<string, InferCostItem[]>();          // [sourceFileName, inferCost]
+export let inferCosts = new Map<string, InferCostItem[]>();          // [inferCostItem.loc.file, inferCost]
 export let inferCostHistories = new Map<string, InferCostItem[]>();  // [inferCostItem.id, costHistory]
 
 export function setActiveTextEditor(newActiveTextEditor: vscode.TextEditor) {
@@ -42,7 +42,7 @@ function updateActiveTextEditorAndSavedDocumentText() {
   } else { return false; }
 }
 
-export function getSourceFileName(editor: vscode.TextEditor) {
+function getSourceFileName(editor: vscode.TextEditor) {
   const sourceFileName = editor.document.fileName.split("/").pop()?.split(".")[0];
   return sourceFileName ? sourceFileName : '';
 }
@@ -156,7 +156,7 @@ async function readInferOutputForProject() {
         id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
         loc: {
-          file: inferCostRawItem.loc.file,
+          file: `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}`,
           lnum: inferCostRawItem.loc.lnum
         },
         alloc_cost: {
@@ -177,21 +177,18 @@ async function readInferOutputForProject() {
 
   inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.file.localeCompare(b.loc.file));
   let sourceFilePath: string | undefined;
-  let sourceFileName: string | undefined;
   let fileInferCost: InferCostItem[] = [];
   for (const inferCostItem of inferCost) {
     if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
-      if (!sourceFileName) { continue; }
       fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
-      inferCosts.set(sourceFileName, fileInferCost);
+      inferCosts.set(sourceFilePath, fileInferCost);
       fileInferCost = [inferCostItem];
     } else {
       fileInferCost.push(inferCostItem);
     }
     sourceFilePath = inferCostItem.loc.file;
-    sourceFileName = sourceFilePath.split("/").pop()?.split(".")[0];
   }
-  const tmpInferCost = inferCosts.get(getSourceFileName(activeTextEditor));
+  const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
   if (tmpInferCost) {
     setCurrentInferCost(tmpInferCost);
   } else { return false; }
@@ -244,7 +241,7 @@ async function readInferOutputForCurrentFile() {
         id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
         loc: {
-          file: inferCostRawItem.loc.file,
+          file: activeTextEditor.document.fileName,
           lnum: inferCostRawItem.loc.lnum
         },
         alloc_cost: {
@@ -263,7 +260,7 @@ async function readInferOutputForCurrentFile() {
     return false;
   }
   setCurrentInferCost(inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum));
-  inferCosts.set(sourceFileName, currentInferCost);
+  inferCosts.set(activeTextEditor.document.fileName, currentInferCost);
   return true;
 }
 
