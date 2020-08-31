@@ -1,21 +1,15 @@
 import * as vscode from 'vscode';
 import { InferCostItem } from '../types';
 import { isExtensionEnabled } from '../extension';
-import { getMethodDeclarations, findMethodDeclarations } from '../javaCodeHandler';
+import { findMethodDeclarations } from '../javaCodeHandler';
 
 export class DetailCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
-  private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
-  public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
   private document: vscode.TextDocument | undefined;
   private inferCost: InferCostItem[];
 
   constructor(inferCost: InferCostItem[]) {
-    vscode.workspace.onDidChangeConfiguration((_) => {
-      this._onDidChangeCodeLenses.fire();
-    });
-
     this.inferCost = inferCost;
   }
 

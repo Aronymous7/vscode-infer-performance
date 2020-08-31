@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { activeTextEditor, currentInferCost, inferCostHistories } from './inferController';
-import { getMethodDeclarations } from './javaCodeHandler';
+import { findMethodDeclarations } from './javaCodeHandler';
 import { InferCostItem } from './types';
 
 // [inferCostItem.id, decorationType]
@@ -40,7 +40,7 @@ export function initializeNameDecorationTypes() {
 }
 
 export function createEditorDecorators() {
-  const methodDeclarations = getMethodDeclarations();
+  const methodDeclarations = findMethodDeclarations(activeTextEditor.document);
 
   const costDegreeDecorations: vscode.DecorationOptions[][] = [];
   for (let i = 0; i < costDegreeDecorationTypesLength; i++) {

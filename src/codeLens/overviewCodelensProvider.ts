@@ -1,19 +1,11 @@
 import * as vscode from 'vscode';
 import { isExtensionEnabled } from '../extension';
-import { getMethodDeclarations, findMethodDeclarations } from '../javaCodeHandler';
+import { findMethodDeclarations } from '../javaCodeHandler';
 
 export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
-  private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
-  public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
   private document: vscode.TextDocument | undefined;
-
-  constructor() {
-    vscode.workspace.onDidChangeConfiguration((_) => {
-      this._onDidChangeCodeLenses.fire();
-    });
-  }
 
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     if (isExtensionEnabled) {

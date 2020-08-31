@@ -5,7 +5,6 @@ import { activeTextEditor, savedDocumentTexts, inferCosts } from './inferControl
 const Diff = require('diff');
 
 export let constantMethods: string[] = [];
-let methodDeclarations: MethodDeclaration[] = [];
 
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|public [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
 let significantCodeChangeRegex = new RegExp(/while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\W+(if|switch))\([^\)]*\)/g);
@@ -14,14 +13,10 @@ export function resetConstantMethods() {
   constantMethods = [];
 }
 
-export function getMethodDeclarations() {
-  return methodDeclarations;
-}
-
 export function findMethodDeclarations(document: vscode.TextDocument) {
   const regex = new RegExp(methodDeclarationRegex);
   const text = document.getText();
-  methodDeclarations = [];
+  let methodDeclarations: MethodDeclaration[] = [];
   let matches;
   while ((matches = regex.exec(text)) !== null) {
     const line = document.lineAt(document.positionAt(matches.index).line);
