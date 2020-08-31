@@ -9,7 +9,7 @@ import {
 } from './editorDecoratorController';
 import { createCodeLenses, disposeCodeLensProviders } from './codeLens/codelensController';
 import { disposeWebviews } from './webviewController';
-import { findMethodDeclarations, setConstantMethodsStale } from './javaCodeHandler';
+import { findMethodDeclarations, constantMethods, resetConstantMethods } from './javaCodeHandler';
 
 const fs = require('fs');
 const util = require('util');
@@ -131,7 +131,6 @@ async function runInferOnProject(buildCommand: string) {
   }
 
   if (await readInferOutputForProject()) {
-    setConstantMethodsStale();
     return true;
   } else {
     return false;
@@ -141,6 +140,7 @@ async function runInferOnProject(buildCommand: string) {
 async function readInferOutputForProject() {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
+  resetConstantMethods();
   let inferCost: InferCostItem[] = [];
   try {
     const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`);
@@ -148,6 +148,9 @@ async function readInferOutputForProject() {
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
+      }
+      if (+inferCostRawItem.exec_cost.hum.hum_degree === 0) {
+        constantMethods.push(inferCostRawItem.procedure_name);
       }
       inferCost.push({
         id: inferCostRawItem.procedure_id,
@@ -215,7 +218,6 @@ async function runInferOnCurrentFile() {
   }
 
   if (await readInferOutputForCurrentFile()) {
-    setConstantMethodsStale();
     return true;
   } else {
     return false;
@@ -226,6 +228,7 @@ async function readInferOutputForCurrentFile() {
   const sourceFileName = getSourceFileName(activeTextEditor);
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
+  resetConstantMethods();
   let inferCost: InferCostItem[] = [];
   try {
     const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-${sourceFileName}/costs-report.json`);
@@ -233,6 +236,9 @@ async function readInferOutputForCurrentFile() {
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
+      }
+      if (+inferCostRawItem.exec_cost.hum.hum_degree === 0) {
+        constantMethods.push(inferCostRawItem.procedure_name);
       }
       inferCost.push({
         id: inferCostRawItem.procedure_id,
