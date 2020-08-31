@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { InferCostItem } from '../types';
 import { isExtensionEnabled } from '../extension';
-import { findMethodDeclarations } from '../javaCodeHandler';
+import { findMethodDeclarations, significantlyChangedMethods } from '../javaCodeHandler';
 
 export class DetailCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
@@ -52,7 +52,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         return codeLens;
       }
       codeLens.command = {
-        title: `Execution cost: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
+        title: `Execution cost${significantlyChangedMethods.includes(currentInferCostItem.method_name) ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
         command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };

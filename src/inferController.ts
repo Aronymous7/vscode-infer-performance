@@ -2,6 +2,12 @@ import * as vscode from 'vscode';
 import { InferCostItem, ExecutionMode } from './types';
 import { executionMode } from './extension';
 import {
+  findMethodDeclarations,
+  constantMethods,
+  resetConstantMethods,
+  resetSignificantlyChangedMethods
+} from './javaCodeHandler';
+import {
   costDegreeDecorationTypes,
   initializeNameDecorationTypes,
   createEditorDecorators,
@@ -9,7 +15,6 @@ import {
 } from './editorDecoratorController';
 import { createCodeLenses, disposeCodeLensProviders } from './codeLens/codelensController';
 import { disposeWebviews } from './webviewController';
-import { findMethodDeclarations, constantMethods, resetConstantMethods } from './javaCodeHandler';
 
 const fs = require('fs');
 const util = require('util');
@@ -121,7 +126,9 @@ export function cleanInferOut() {
 }
 
 async function runInferOnProject(buildCommand: string) {
+  resetSignificantlyChangedMethods();
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+
   try {
     await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive -- ${buildCommand}`);
   } catch (err) {
@@ -131,6 +138,33 @@ async function runInferOnProject(buildCommand: string) {
   }
 
   if (await readInferOutputForProject()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+async function runInferOnCurrentFile() {
+  resetSignificantlyChangedMethods();
+  const sourceFilePath = activeTextEditor.document.fileName;
+
+  if (!sourceFilePath.endsWith(".java")) {
+    vscode.window.showInformationMessage('Infer can only be executed on Java files.');
+    console.log("Tried to execute Infer on non-Java file.");
+    return false;
+  }
+
+  const sourceFileName = getSourceFileName(activeTextEditor);
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  try {
+    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${sourceFileName} -- javac ${sourceFilePath}`);
+  } catch (err) {
+    console.log(err);
+    vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
+    return false;
+  }
+
+  if (await readInferOutputForCurrentFile()) {
     return true;
   } else {
     return false;
@@ -194,31 +228,6 @@ async function readInferOutputForProject() {
   } else { return false; }
 
   return true;
-}
-
-async function runInferOnCurrentFile() {
-  const sourceFilePath = activeTextEditor.document.fileName;
-  if (!sourceFilePath.endsWith(".java")) {
-    vscode.window.showInformationMessage('Infer can only be executed on Java files.');
-    console.log("Tried to execute Infer on non-Java file.");
-    return false;
-  }
-
-  const sourceFileName = getSourceFileName(activeTextEditor);
-  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-  try {
-    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${sourceFileName} -- javac ${sourceFilePath}`);
-  } catch (err) {
-    console.log(err);
-    vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
-    return false;
-  }
-
-  if (await readInferOutputForCurrentFile()) {
-    return true;
-  } else {
-    return false;
-  }
 }
 
 async function readInferOutputForCurrentFile() {

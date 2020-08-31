@@ -5,6 +5,7 @@ import { activeTextEditor, savedDocumentTexts } from './inferController';
 const Diff = require('diff');
 
 export let constantMethods: string[] = [];
+export let significantlyChangedMethods: string[] = [];
 
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|public [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
 let significantCodeChangeRegex = new RegExp(/while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\W+(if|switch))\([^\)]*\)/g);
@@ -12,12 +13,15 @@ let significantCodeChangeRegex = new RegExp(/while *\(.+\)|for *\(.+\)|[A-Za-z_$
 export function resetConstantMethods() {
   constantMethods = [];
 }
+export function resetSignificantlyChangedMethods() {
+  significantlyChangedMethods = [];
+}
 
 export function findMethodDeclarations(document: vscode.TextDocument) {
   const regex = new RegExp(methodDeclarationRegex);
   const text = document.getText();
   let methodDeclarations: MethodDeclaration[] = [];
-  let matches;
+  let matches: RegExpExecArray | null;
   while ((matches = regex.exec(text)) !== null) {
     const line = document.lineAt(document.positionAt(matches.index).line);
 
@@ -37,27 +41,46 @@ export function findMethodDeclarations(document: vscode.TextDocument) {
   return methodDeclarations;
 }
 
-export function isSignificantCodeChange(savedText: string) {
+export function significantCodeChangeCheck(savedText: string) {
   const previousText = savedDocumentTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
 
   const methodWhitelist = constantMethods.concat(vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []));
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
-  let allMatches: string[] = [];
+  let containingMethods: string[] = [];
   let isSignificant = false;
-  for (let diffTextPart of diffText) {
+  for (let diffTextPartIndex in diffText) {
+    let diffTextPart = diffText[diffTextPartIndex];
     if (diffTextPart.hasOwnProperty('added') || diffTextPart.hasOwnProperty('removed')) {
       let matches = diffTextPart.value.match(significantCodeChangeRegex);
       if (matches) {
+        let containingMethod = "";
+        for (let i = +diffTextPartIndex - 1; i >= 0; i--){
+          let prevDiffTextPart = diffText[i];
+          const regex = new RegExp(methodDeclarationRegex);
+          let declarationMatches: RegExpExecArray | null;
+          while ((declarationMatches = regex.exec(prevDiffTextPart.value)) !== null) {
+            containingMethod = declarationMatches[1];
+          }
+          if (containingMethod !== "") {
+            break;
+          }
+        }
         for (const match of matches) {
-          allMatches.push(match.split("(")[0]);
+          if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(match.split("(")[0])) {
+            if (!significantlyChangedMethods.includes(containingMethod)) {
+              significantlyChangedMethods.push(containingMethod);
+            }
+            if (containingMethod !== "") {
+              containingMethods.push(containingMethod);
+            }
+            isSignificant = true;
+          }
         }
       }
     }
   }
-  if (allMatches.filter(methodName => !methodWhitelist.includes(methodName)).length !== 0) {
-    isSignificant = true;
-  }
+  console.log(significantlyChangedMethods);
   return isSignificant;
 }
 

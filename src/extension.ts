@@ -14,7 +14,7 @@ import {
   savedDocumentTexts,
 } from './inferController';
 import {
-  isSignificantCodeChange,
+  significantCodeChangeCheck,
   addMethodToWhitelist,
   removeMethodFromWhitelist,
   findMethodDeclarations
@@ -146,24 +146,25 @@ export function activate(context: vscode.ExtensionContext) {
   }, null, context.subscriptions);
 
   vscode.workspace.onDidSaveTextDocument(document => {
-    if (vscode.workspace.getConfiguration('infer-for-vscode').get('automaticReExecution', false) &&
-        document === activeTextEditor.document &&
+    if (document === activeTextEditor.document &&
         isExtensionEnabled &&
-        isSignificantCodeChange(document.getText())) {
+        significantCodeChangeCheck(document.getText())) {
 
-      vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: "Automatic re-execution of Infer...",
-        cancellable: false
-      }, (progress, token) => {
-        return new Promise(async resolve => {
-          const success = await executeInfer();
-          if (success) {
-            vscode.window.showInformationMessage('Infer has been successfully re-executed.');
-          }
-          resolve();
+      if (vscode.workspace.getConfiguration('infer-for-vscode').get('automaticReExecution', false)) {
+        vscode.window.withProgress({
+          location: vscode.ProgressLocation.Notification,
+          title: "Automatic re-execution of Infer...",
+          cancellable: false
+        }, (progress, token) => {
+          return new Promise(async resolve => {
+            const success = await executeInfer();
+            if (success) {
+              vscode.window.showInformationMessage('Infer has been successfully re-executed.');
+            }
+            resolve();
+          });
         });
-      });
+      }
     }
   }, null, context.subscriptions);
 }
