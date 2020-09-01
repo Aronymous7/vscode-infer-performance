@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
       return;
     }
-    showExecutionProgress(executeInfer, "Infer has been successfully executed.");
+    showExecutionProgress(executeInfer, "Executing Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -58,7 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
     }
-    showExecutionProgress(enableInfer, "Infer has been enabled.", buildCommand);
+    showExecutionProgress(enableInfer, "Enabling (and executing) Infer...", buildCommand);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -69,7 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     executionMode = ExecutionMode.File;
-    showExecutionProgress(enableInfer, "Infer has been enabled for current file.");
+    showExecutionProgress(enableInfer, "Enabling (and executing) Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -151,19 +151,7 @@ export function activate(context: vscode.ExtensionContext) {
         significantCodeChangeCheck(document.getText())) {
 
       if (vscode.workspace.getConfiguration('infer-for-vscode').get('automaticReExecution', false)) {
-        vscode.window.withProgress({
-          location: vscode.ProgressLocation.Notification,
-          title: "Automatic re-execution of Infer...",
-          cancellable: false
-        }, (progress, token) => {
-          return new Promise(async resolve => {
-            const success = await executeInfer();
-            if (success) {
-              vscode.window.showInformationMessage('Infer has been successfully re-executed.');
-            }
-            resolve();
-          });
-        });
+        showExecutionProgress(executeInfer, "Automatic re-execution of Infer...");
       }
     }
   }, null, context.subscriptions);
@@ -178,23 +166,19 @@ export function deactivate() {
   disposables = [];
 }
 
-function showExecutionProgress(executionFunction: Function, successMessage: string, buildCommand?: string) {
+function showExecutionProgress(executionFunction: Function, titleMessage: string, buildCommand?: string) {
   vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
-    title: "Executing Infer...",
+    title: titleMessage,
     cancellable: false
-  }, (progress, token) => {
+  }, () => {
     return new Promise(async resolve => {
-      let success: boolean;
       if (buildCommand) {
-        success = await executionFunction(buildCommand);
+        await executionFunction(buildCommand);
       } else {
-        success = await executionFunction();
+        await executionFunction();
       }
       isExtensionEnabled = true;
-      if (success) {
-        vscode.window.showInformationMessage(successMessage);
-      }
       resolve();
     });
   });

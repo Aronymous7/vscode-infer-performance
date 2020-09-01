@@ -64,35 +64,35 @@ export async function executeInfer() {
     const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
     if (!buildCommand) {
       vscode.window.showErrorMessage("Build command could not be found in VSCode config");
-      return false;
+      return;
     }
-    if (!await runInferOnProject(buildCommand)) { return false; }
+    if (!await runInferOnProject(buildCommand)) { return; }
   } else if (executionMode === ExecutionMode.File) {
-    if (!await runInferOnCurrentFile()) { return false; }
-  } else { return false; }
+    if (!await runInferOnCurrentFile()) { return; }
+  } else { return; }
 
   createInferAnnotations();
 
-  return true;
+  vscode.window.showInformationMessage("Infer has been executed.");
 }
 
 export async function enableInfer(buildCommand?: string) {
-  if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
+  if (!updateActiveTextEditorAndSavedDocumentText()) { return; }
 
   if (executionMode === ExecutionMode.Project) {
-    if (!buildCommand) { return false; }
+    if (!buildCommand) { return; }
     if (!await readInferOutputForProject()) {
-      if (!await runInferOnProject(buildCommand)) { return false; }
+      if (!await runInferOnProject(buildCommand)) { return; }
     }
   } else if (executionMode === ExecutionMode.File) {
     if (!await readInferOutputForCurrentFile()) {
-      if (!await runInferOnCurrentFile()) { return false; }
+      if (!await runInferOnCurrentFile()) { return; }
     }
-  } else { return false; }
+  } else { return; }
 
   createInferAnnotations();
 
-  return true;
+  vscode.window.showInformationMessage(`Infer has been enabled for the current ${executionMode === ExecutionMode.Project ? "project" : "file"}.`);
 }
 
 function createInferAnnotations() {
