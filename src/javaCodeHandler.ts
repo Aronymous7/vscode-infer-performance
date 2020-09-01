@@ -83,7 +83,12 @@ export function significantCodeChangeCheck(savedText: string) {
       }
     }
   }
-  if (isSignificant) {
+  const revertedMethods = significantlyChangedMethods.filter(method => !containingMethods.includes(method));
+  for (const method of revertedMethods) {
+    const methodIndex = significantlyChangedMethods.indexOf(method);
+    significantlyChangedMethods.splice(methodIndex, 1);
+  }
+  if (isSignificant || revertedMethods.length > 0) {
     significantCodeChange.fire();
   }
   return isSignificant;
