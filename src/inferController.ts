@@ -73,26 +73,31 @@ export async function executeInfer() {
 
   createInferAnnotations();
 
-  vscode.window.showInformationMessage("Infer has been executed.");
+  vscode.window.showInformationMessage("Executed Infer.");
 }
 
 export async function enableInfer(buildCommand?: string) {
+  let wasFreshExecution = true;
   if (!updateActiveTextEditorAndSavedDocumentText()) { return; }
 
   if (executionMode === ExecutionMode.Project) {
     if (!buildCommand) { return; }
     if (!await readInferOutputForProject()) {
       if (!await runInferOnProject(buildCommand)) { return; }
+    } else {
+      wasFreshExecution = false;
     }
   } else if (executionMode === ExecutionMode.File) {
     if (!await readInferOutputForCurrentFile()) {
       if (!await runInferOnCurrentFile()) { return; }
+    } else {
+      wasFreshExecution = false;
     }
   } else { return; }
 
   createInferAnnotations();
 
-  vscode.window.showInformationMessage(`Infer has been enabled for the current ${executionMode === ExecutionMode.Project ? "project" : "file"}.`);
+  vscode.window.showInformationMessage(`Enabled Infer for current ${executionMode === ExecutionMode.Project ? "project" : "file"} (${wasFreshExecution ? "fresh execution" : "read from infer-out"}).`);
 }
 
 function createInferAnnotations() {
