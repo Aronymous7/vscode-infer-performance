@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { MethodDeclaration, LineDiff } from './types';
-import { activeTextEditor, savedDocumentTexts } from './inferController';
+import { activeTextEditor, savedDocumentTexts, inferCosts, currentInferCost } from './inferController';
 
 const Diff = require('diff');
 
@@ -18,6 +18,23 @@ export function resetConstantMethods() {
 }
 export function resetSignificantlyChangedMethods() {
   significantlyChangedMethods = [];
+}
+
+export function removeConstantMethods() {
+  for (const inferCostItem of currentInferCost) {
+    const methodIndex = constantMethods.indexOf(inferCostItem.method_name);
+    if (methodIndex > -1) {
+      constantMethods.splice(methodIndex, 1);
+    }
+  }
+}
+export function removeSignificantlyChangedMethods() {
+  for (const inferCostItem of currentInferCost) {
+    const methodIndex = significantlyChangedMethods.indexOf(inferCostItem.method_name);
+    if (methodIndex > -1) {
+      significantlyChangedMethods.splice(methodIndex, 1);
+    }
+  }
 }
 
 export function findMethodDeclarations(document: vscode.TextDocument) {

@@ -4,6 +4,7 @@ import { validateBuildCommand } from './validators';
 import {
   inferCosts,
   executeInfer,
+  executeInferForFileWithinProject,
   enableInfer,
   disableInfer,
   cleanInferOut,
@@ -11,7 +12,7 @@ import {
   setActiveTextEditor,
   updateSavedDocumentText,
   activeTextEditor,
-  savedDocumentTexts,
+  savedDocumentTexts
 } from './inferController';
 import {
   significantCodeChangeCheck,
@@ -32,12 +33,22 @@ export let executionMode: ExecutionMode;
 
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.execute", () => {
+  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.reExecute", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
       return;
     }
     showExecutionProgress(executeInfer, "Executing Infer...");
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.reExecuteForFileWithinProject", () => {
+    if (!isExtensionEnabled) {
+      vscode.window.showInformationMessage("Please enable Infer before re-executing.");
+      return;
+    }
+    showExecutionProgress(executeInferForFileWithinProject, "Executing Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -63,7 +74,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForCurrentFile", () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForFile", () => {
     if (isExtensionEnabled && executionMode === ExecutionMode.File) {
       vscode.window.showInformationMessage("Infer is already enabled for current file (use re-execution command to re-execute)");
       return;
@@ -148,6 +159,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.workspace.onDidSaveTextDocument(document => {
     if (document === activeTextEditor.document &&
         isExtensionEnabled &&
+        inferCosts.get(activeTextEditor.document.fileName) &&
         significantCodeChangeCheck(document.getText())) {
 
       if (vscode.workspace.getConfiguration('infer-for-vscode').get('automaticReExecution', false)) {

@@ -24,8 +24,13 @@
   "contributes": {
     "commands": [
       {
-        "command": "infer-for-vscode.execute",
+        "command": "infer-for-vscode.reExecute",
         "title": "Re-execute performance analysis",
+        "category": "Infer"
+      },
+      {
+        "command": "infer-for-vscode.reExecuteForFileWithinProject",
+        "title": "Re-execute performance analysis for current file within project",
         "category": "Infer"
       },
       {
@@ -34,7 +39,7 @@
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.enableForCurrentFile",
+        "command": "infer-for-vscode.enableForFile",
         "title": "Enable performance analysis only for current file",
         "category": "Infer"
       },

@@ -5,7 +5,9 @@ import {
   findMethodDeclarations,
   constantMethods,
   resetConstantMethods,
-  resetSignificantlyChangedMethods
+  removeConstantMethods,
+  resetSignificantlyChangedMethods,
+  removeSignificantlyChangedMethods
 } from './javaCodeHandler';
 import {
   costDegreeDecorationTypes,
@@ -67,6 +69,25 @@ export async function executeInfer() {
       return;
     }
     if (!await runInferOnProject(buildCommand)) { return; }
+  } else if (executionMode === ExecutionMode.File) {
+    if (!await runInferOnCurrentFile()) { return; }
+  } else { return; }
+
+  createInferAnnotations();
+
+  vscode.window.showInformationMessage("Executed Infer.");
+}
+
+export async function executeInferForFileWithinProject() {
+  savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
+
+  if (executionMode === ExecutionMode.Project) {
+    const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
+    if (!buildCommand) {
+      vscode.window.showErrorMessage("Build command could not be found in VSCode config");
+      return;
+    }
+    if (!await runInferOnCurrentFileWithinProject(buildCommand)) { return; }
   } else if (executionMode === ExecutionMode.File) {
     if (!await runInferOnCurrentFile()) { return; }
   } else { return; }
@@ -147,6 +168,70 @@ async function runInferOnProject(buildCommand: string) {
   } else {
     return false;
   }
+}
+
+async function runInferOnCurrentFileWithinProject(buildCommand: string) {
+  const sourceFilePath = activeTextEditor.document.fileName;
+  removeSignificantlyChangedMethods();
+
+  if (!sourceFilePath.endsWith(".java")) {
+    vscode.window.showInformationMessage('Infer can only be executed on Java files.');
+    console.log("Tried to execute Infer on non-Java file.");
+    return false;
+  }
+
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  try {
+    if (buildCommand.startsWith("./gradlew") || buildCommand.startsWith("gradle")) {
+      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o tmp-infer-out -- javac -cp $CLASSPATH:build/classes/main:build/libs ${sourceFilePath}`);
+    } else {
+      vscode.window.showErrorMessage("Unsupported build tool for this execution mode");
+      return false;
+    }
+  } catch (err) {
+    console.log(err);
+    vscode.window.showErrorMessage("Single file execution not supported for this file.");
+    return false;
+  }
+
+  removeConstantMethods();
+  let inferCost: InferCostItem[] = [];
+  try {
+    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/tmp-infer-out/costs-report.json`);
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/tmp-infer-out`), {recursive: true});
+    let inferCostRaw = JSON.parse(inferCostJsonString);
+    for (let inferCostRawItem of inferCostRaw) {
+      if (inferCostRawItem.procedure_name === "<init>") {
+        continue;
+      }
+      if (+inferCostRawItem.exec_cost.hum.hum_degree === 0) {
+        constantMethods.push(inferCostRawItem.procedure_name);
+      }
+      inferCost.push({
+        id: inferCostRawItem.procedure_id,
+        method_name: inferCostRawItem.procedure_name,
+        loc: {
+          file: `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}`,
+          lnum: inferCostRawItem.loc.lnum
+        },
+        alloc_cost: {
+          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/\./g, '*'),
+          degree: +inferCostRawItem.alloc_cost.hum.hum_degree,
+          big_o: inferCostRawItem.alloc_cost.hum.big_o
+        },
+        exec_cost: {
+          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/\./g, '*'),
+          degree: +inferCostRawItem.exec_cost.hum.hum_degree,
+          big_o: inferCostRawItem.exec_cost.hum.big_o
+        }
+      });
+    }
+  } catch (err) {
+    return false;
+  }
+  setCurrentInferCost(inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum));
+  inferCosts.set(activeTextEditor.document.fileName, currentInferCost);
+  return true;
 }
 
 async function runInferOnCurrentFile() {
