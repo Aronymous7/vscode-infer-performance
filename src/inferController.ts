@@ -81,16 +81,12 @@ export async function executeInfer() {
 export async function executeInferForFileWithinProject() {
   savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
 
-  if (executionMode === ExecutionMode.Project) {
-    const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
-    if (!buildCommand) {
-      vscode.window.showErrorMessage("Build command could not be found in VSCode config");
-      return;
-    }
-    if (!await runInferOnCurrentFileWithinProject(buildCommand)) { return; }
-  } else if (executionMode === ExecutionMode.File) {
-    if (!await runInferOnCurrentFile()) { return; }
-  } else { return; }
+  const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
+  if (!buildCommand) {
+    vscode.window.showErrorMessage("Build command could not be found in VSCode config");
+    return;
+  }
+  if (!await runInferOnCurrentFileWithinProject(buildCommand)) { return; }
 
   createInferAnnotations();
 
@@ -103,13 +99,13 @@ export async function enableInfer(buildCommand?: string) {
 
   if (executionMode === ExecutionMode.Project) {
     if (!buildCommand) { return; }
-    if (!await readInferOutputForProject()) {
+    if (!await readNewInferOutput("infer-out")) {
       if (!await runInferOnProject(buildCommand)) { return; }
     } else {
       wasFreshExecution = false;
     }
   } else if (executionMode === ExecutionMode.File) {
-    if (!await readInferOutputForCurrentFile()) {
+    if (!await readNewInferOutput(`infer-out-${getSourceFileName(activeTextEditor)}`)) {
       if (!await runInferOnCurrentFile()) { return; }
     } else {
       wasFreshExecution = false;
@@ -163,11 +159,7 @@ async function runInferOnProject(buildCommand: string) {
     return false;
   }
 
-  if (await readInferOutputForProject()) {
-    return true;
-  } else {
-    return false;
-  }
+  return await readNewInferOutput("infer-out");
 }
 
 async function runInferOnCurrentFileWithinProject(buildCommand: string) {
@@ -194,44 +186,7 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
     return false;
   }
 
-  removeConstantMethods();
-  let inferCost: InferCostItem[] = [];
-  try {
-    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/tmp-infer-out/costs-report.json`);
-    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/tmp-infer-out`), {recursive: true});
-    let inferCostRaw = JSON.parse(inferCostJsonString);
-    for (let inferCostRawItem of inferCostRaw) {
-      if (inferCostRawItem.procedure_name === "<init>") {
-        continue;
-      }
-      if (+inferCostRawItem.exec_cost.hum.hum_degree === 0) {
-        constantMethods.push(inferCostRawItem.procedure_name);
-      }
-      inferCost.push({
-        id: inferCostRawItem.procedure_id,
-        method_name: inferCostRawItem.procedure_name,
-        loc: {
-          file: `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}`,
-          lnum: inferCostRawItem.loc.lnum
-        },
-        alloc_cost: {
-          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: +inferCostRawItem.alloc_cost.hum.hum_degree,
-          big_o: inferCostRawItem.alloc_cost.hum.big_o
-        },
-        exec_cost: {
-          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: +inferCostRawItem.exec_cost.hum.hum_degree,
-          big_o: inferCostRawItem.exec_cost.hum.big_o
-        }
-      });
-    }
-  } catch (err) {
-    return false;
-  }
-  setCurrentInferCost(inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum));
-  inferCosts.set(activeTextEditor.document.fileName, currentInferCost);
-  return true;
+  return await readNewInferOutput("tmp-infer-out", true);
 }
 
 async function runInferOnCurrentFile() {
@@ -244,30 +199,37 @@ async function runInferOnCurrentFile() {
     return false;
   }
 
-  const sourceFileName = getSourceFileName(activeTextEditor);
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  const inferOutFolder = `infer-out-${getSourceFileName(activeTextEditor)}`;
   try {
-    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-${sourceFileName} -- javac ${sourceFilePath}`);
+    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/${inferOutFolder} -- javac ${sourceFilePath}`);
   } catch (err) {
     console.log(err);
     vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
     return false;
   }
 
-  if (await readInferOutputForCurrentFile()) {
+  if (await readNewInferOutput(inferOutFolder)) {
     return true;
   } else {
     return false;
   }
 }
 
-async function readInferOutputForProject() {
+async function readNewInferOutput(inferOutFolder: string, isSingleFileWithinProject?: boolean) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
-  resetConstantMethods();
+  if (isSingleFileWithinProject) {
+    removeConstantMethods();
+  } else {
+    resetConstantMethods();
+  }
   let inferCost: InferCostItem[] = [];
   try {
-    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`);
+    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`);
+    if (isSingleFileWithinProject) {
+      vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutFolder}`), {recursive: true});
+    }
     let inferCostRaw = JSON.parse(inferCostJsonString);
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
@@ -280,7 +242,7 @@ async function readInferOutputForProject() {
         id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
         loc: {
-          file: `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}`,
+          file: executionMode === ExecutionMode.Project ? `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}` : activeTextEditor.document.fileName,
           lnum: inferCostRawItem.loc.lnum
         },
         alloc_cost: {
@@ -298,68 +260,35 @@ async function readInferOutputForProject() {
   } catch (err) {
     return false;
   }
-
-  inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.file.localeCompare(b.loc.file));
-  let sourceFilePath: string | undefined;
-  let fileInferCost: InferCostItem[] = [];
-  for (const inferCostItem of inferCost) {
-    if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
-      fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
-      inferCosts.set(sourceFilePath, fileInferCost);
-      fileInferCost = [inferCostItem];
-    } else {
-      fileInferCost.push(inferCostItem);
-    }
-    sourceFilePath = inferCostItem.loc.file;
-  }
-  const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
-  if (tmpInferCost) {
-    setCurrentInferCost(tmpInferCost);
-  } else { return false; }
-
-  return true;
-}
-
-async function readInferOutputForCurrentFile() {
-  const sourceFileName = getSourceFileName(activeTextEditor);
-  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-
-  resetConstantMethods();
-  let inferCost: InferCostItem[] = [];
-  try {
-    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-${sourceFileName}/costs-report.json`);
-    let inferCostRaw = JSON.parse(inferCostJsonString);
-    for (let inferCostRawItem of inferCostRaw) {
-      if (inferCostRawItem.procedure_name === "<init>") {
-        continue;
+  if (executionMode === ExecutionMode.Project && !isSingleFileWithinProject) {
+    inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.file.localeCompare(b.loc.file));
+    let sourceFilePath: string | undefined;
+    let fileInferCost: InferCostItem[] = [];
+    for (const inferCostItem of inferCost) {
+      if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
+        fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
+        inferCosts.set(sourceFilePath, fileInferCost);
+        fileInferCost = [inferCostItem];
+      } else {
+        fileInferCost.push(inferCostItem);
       }
-      if (+inferCostRawItem.exec_cost.hum.hum_degree === 0) {
-        constantMethods.push(inferCostRawItem.procedure_name);
-      }
-      inferCost.push({
-        id: inferCostRawItem.procedure_id,
-        method_name: inferCostRawItem.procedure_name,
-        loc: {
-          file: activeTextEditor.document.fileName,
-          lnum: inferCostRawItem.loc.lnum
-        },
-        alloc_cost: {
-          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: +inferCostRawItem.alloc_cost.hum.hum_degree,
-          big_o: inferCostRawItem.alloc_cost.hum.big_o
-        },
-        exec_cost: {
-          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/\./g, '*'),
-          degree: +inferCostRawItem.exec_cost.hum.hum_degree,
-          big_o: inferCostRawItem.exec_cost.hum.big_o
-        }
-      });
+      sourceFilePath = inferCostItem.loc.file;
     }
-  } catch (err) {
-    return false;
+    const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
+    if (tmpInferCost) {
+      setCurrentInferCost(tmpInferCost);
+    } else { return false; }
+  } else {
+    setCurrentInferCost(inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum));
+    inferCosts.set(activeTextEditor.document.fileName, currentInferCost);
   }
-  setCurrentInferCost(inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum));
-  inferCosts.set(activeTextEditor.document.fileName, currentInferCost);
+
+  if (!isSingleFileWithinProject) {
+    // write
+  } else {
+    // write
+  }
+
   return true;
 }
 

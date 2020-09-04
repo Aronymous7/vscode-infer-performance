@@ -47,6 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
       return;
+    } else if (executionMode === ExecutionMode.File) {
+      vscode.window.showInformationMessage("Infer is not enabled for a project.");
+      return;
     }
     showExecutionProgress(executeInferForFileWithinProject, "Executing Infer...");
   });
