@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { InferCostItem, ExecutionMode } from './types';
 import { executionMode } from './extension';
 import {
-  findMethodDeclarations,
   constantMethods,
   resetConstantMethods,
   removeConstantMethods,
@@ -99,13 +98,13 @@ export async function enableInfer(buildCommand?: string) {
 
   if (executionMode === ExecutionMode.Project) {
     if (!buildCommand) { return; }
-    if (!await readNewInferOutput("infer-out")) {
+    if (!await readInferOut("infer-out")) {
       if (!await runInferOnProject(buildCommand)) { return; }
     } else {
       wasFreshExecution = false;
     }
   } else if (executionMode === ExecutionMode.File) {
-    if (!await readNewInferOutput(`infer-out-${getSourceFileName(activeTextEditor)}`)) {
+    if (!await readInferOut(`infer-out-${getSourceFileName(activeTextEditor)}`)) {
       if (!await runInferOnCurrentFile()) { return; }
     } else {
       wasFreshExecution = false;
@@ -123,7 +122,6 @@ function createInferAnnotations() {
   }
 
   updateInferCostHistory();
-  findMethodDeclarations(activeTextEditor.document);
 
   createCodeLenses();
   createEditorDecorators();
@@ -159,7 +157,7 @@ async function runInferOnProject(buildCommand: string) {
     return false;
   }
 
-  return await readNewInferOutput("infer-out");
+  return await readRawInferOutput("infer-out");
 }
 
 async function runInferOnCurrentFileWithinProject(buildCommand: string) {
@@ -186,7 +184,7 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
     return false;
   }
 
-  return await readNewInferOutput("tmp-infer-out", true);
+  return await readRawInferOutput("tmp-infer-out", true);
 }
 
 async function runInferOnCurrentFile() {
@@ -209,14 +207,10 @@ async function runInferOnCurrentFile() {
     return false;
   }
 
-  if (await readNewInferOutput(inferOutFolder)) {
-    return true;
-  } else {
-    return false;
-  }
+  return await readRawInferOutput(inferOutFolder);
 }
 
-async function readNewInferOutput(inferOutFolder: string, isSingleFileWithinProject?: boolean) {
+async function readRawInferOutput(inferOutFolder: string, isSingleFileWithinProject?: boolean) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
   if (isSingleFileWithinProject) {
@@ -226,11 +220,11 @@ async function readNewInferOutput(inferOutFolder: string, isSingleFileWithinProj
   }
   let inferCost: InferCostItem[] = [];
   try {
-    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`);
+    const inferCostRawJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`);
     if (isSingleFileWithinProject) {
       vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutFolder}`), {recursive: true});
     }
-    let inferCostRaw = JSON.parse(inferCostJsonString);
+    let inferCostRaw = JSON.parse(inferCostRawJsonString);
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
@@ -284,9 +278,61 @@ async function readNewInferOutput(inferOutFolder: string, isSingleFileWithinProj
   }
 
   if (!isSingleFileWithinProject) {
-    // write
+    const inferCostJsonString = JSON.stringify(inferCost);
+    fs.promises.writeFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`, inferCostJsonString, 'utf8');
   } else {
-    // write
+    let oldInferCost: InferCostItem[];
+    try {
+      const oldInferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`);
+      oldInferCost = JSON.parse(oldInferCostJsonString);
+    } catch (err) {
+      return false;
+    }
+    oldInferCost = oldInferCost.filter(oldInferCostItem => oldInferCostItem.loc.file !== inferCost[0].loc.file);
+    inferCost = inferCost.concat(oldInferCost);
+    const inferCostJsonString = JSON.stringify(inferCost);
+    fs.promises.writeFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`, inferCostJsonString, 'utf8');
+  }
+
+  return true;
+}
+
+async function readInferOut(inferOutFolder: string) {
+  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+
+  let inferCost: InferCostItem[] = [];
+  try {
+    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`);
+    inferCost = JSON.parse(inferCostJsonString);
+  } catch (err) {
+    return false;
+  }
+  for (const inferCostRawItem of inferCost) {
+    if (inferCostRawItem.exec_cost.degree === 0) {
+      constantMethods.push(inferCostRawItem.method_name);
+    }
+  }
+
+  if (executionMode === ExecutionMode.Project) {
+    let sourceFilePath: string | undefined;
+    let fileInferCost: InferCostItem[] = [];
+    for (const inferCostItem of inferCost) {
+      if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
+        fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
+        inferCosts.set(sourceFilePath, fileInferCost);
+        fileInferCost = [inferCostItem];
+      } else {
+        fileInferCost.push(inferCostItem);
+      }
+      sourceFilePath = inferCostItem.loc.file;
+    }
+    const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
+    if (tmpInferCost) {
+      setCurrentInferCost(tmpInferCost);
+    } else { return false; }
+  } else {
+    setCurrentInferCost(inferCost);
+    inferCosts.set(activeTextEditor.document.fileName, inferCost);
   }
 
   return true;

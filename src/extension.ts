@@ -18,7 +18,6 @@ import {
   significantCodeChangeCheck,
   addMethodToWhitelist,
   removeMethodFromWhitelist,
-  findMethodDeclarations
 } from './javaCodeHandler';
 import { createEditorDecorators } from './editorDecoratorController';
 import { createWebviewOverview, createWebviewHistory } from './webviewController';
@@ -150,7 +149,6 @@ export function activate(context: vscode.ExtensionContext) {
         if (!savedDocumentTexts.has(editor.document.fileName)) {
           updateSavedDocumentText(editor);
         }
-        findMethodDeclarations(editor.document);
         if (!hasFileCodeLenses.get(editor.document.fileName)) {
           createCodeLenses();
         }
