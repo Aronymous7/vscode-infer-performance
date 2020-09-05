@@ -139,7 +139,7 @@ export function cleanInferOut() {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   fs.readdirSync(currentWorkspaceFolder).forEach((file: string) => {
     const filePath = `${currentWorkspaceFolder}/${file}`;
-    if (file.startsWith("infer-out") && fs.statSync(filePath).isDirectory()) {
+    if (fs.statSync(filePath).isDirectory() && (file.startsWith("infer-out") || file === "infer-classes")) {
       vscode.workspace.fs.delete(vscode.Uri.file(filePath), {recursive: true});
     }
   });
@@ -148,7 +148,10 @@ export function cleanInferOut() {
 async function runInferOnProject(buildCommand: string) {
   resetSignificantlyChangedMethods();
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-  vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-classes`), {recursive: true});
+  try {
+    await fs.promises.access(`${currentWorkspaceFolder}/infer-classes`);
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-classes`), {recursive: true});
+  } catch (err) {}
 
   try {
     await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive -- ${buildCommand}`);
@@ -167,7 +170,6 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
 
   if (!sourceFilePath.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
-    console.log("Tried to execute Infer on non-Java file.");
     return false;
   }
 
@@ -175,12 +177,11 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
   try {
     await fs.promises.access(`${currentWorkspaceFolder}/infer-classes`);
   } catch (err) {
-    console.log('test');
     await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-classes`);
   }
   try {
     if (buildCommand.startsWith("./gradlew") || buildCommand.startsWith("gradle")) {
-      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o tmp-infer-out -- javac -cp infer-classes:build/classes/main:build/libs:CLASSPATH -d infer-classes ${sourceFilePath}`);
+      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o infer-out-tmp -- javac -cp infer-classes:build/classes/main:build/libs:$CLASSPATH -d infer-classes ${sourceFilePath}`);
     } else {
       vscode.window.showErrorMessage("Unsupported build tool for this execution mode");
       return false;
@@ -191,7 +192,7 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
     return false;
   }
 
-  return await readRawInferOutput("tmp-infer-out", true);
+  return await readRawInferOutput("infer-out-tmp", true);
 }
 
 async function runInferOnCurrentFile() {
@@ -200,7 +201,6 @@ async function runInferOnCurrentFile() {
 
   if (!sourceFilePath.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
-    console.log("Tried to execute Infer on non-Java file.");
     return false;
   }
 
