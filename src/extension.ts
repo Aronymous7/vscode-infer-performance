@@ -186,12 +186,15 @@ function showExecutionProgress(executionFunction: Function, titleMessage: string
     cancellable: false
   }, () => {
     return new Promise(async resolve => {
+      let success: boolean;
       if (buildCommand) {
-        await executionFunction(buildCommand);
+        success = await executionFunction(buildCommand);
       } else {
-        await executionFunction();
+        success = await executionFunction();
       }
-      isExtensionEnabled = true;
+      if (success) {
+        isExtensionEnabled = true;
+      }
       resolve();
     });
   });

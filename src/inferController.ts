@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { InferCostItem, ExecutionMode } from './types';
-import { executionMode } from './extension';
+import { executionMode, isExtensionEnabled } from './extension';
 import {
   constantMethods,
   resetConstantMethods,
@@ -65,16 +65,17 @@ export async function executeInfer() {
     const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
     if (!buildCommand) {
       vscode.window.showErrorMessage("Build command could not be found in VSCode config");
-      return;
+      return false;
     }
-    if (!await runInferOnProject(buildCommand)) { return; }
+    if (!await runInferOnProject(buildCommand)) { return false; }
   } else if (executionMode === ExecutionMode.File) {
-    if (!await runInferOnCurrentFile()) { return; }
-  } else { return; }
+    if (!await runInferOnCurrentFile()) { return false; }
+  } else { return false; }
 
   createInferAnnotations();
 
   vscode.window.showInformationMessage("Executed Infer.");
+  return true;
 }
 
 export async function executeInferForFileWithinProject() {
@@ -83,37 +84,39 @@ export async function executeInferForFileWithinProject() {
   const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
   if (!buildCommand) {
     vscode.window.showErrorMessage("Build command could not be found in VSCode config");
-    return;
+    return false;
   }
-  if (!await runInferOnCurrentFileWithinProject(buildCommand)) { return; }
+  if (!await runInferOnCurrentFileWithinProject(buildCommand)) { return false; }
 
   createInferAnnotations();
 
   vscode.window.showInformationMessage("Executed Infer.");
+  return true;
 }
 
 export async function enableInfer(buildCommand?: string) {
   let wasFreshExecution = true;
-  if (!updateActiveTextEditorAndSavedDocumentText()) { return; }
+  if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
 
   if (executionMode === ExecutionMode.Project) {
-    if (!buildCommand) { return; }
+    if (!buildCommand) { return false; }
     if (!await readInferOut("infer-out")) {
-      if (!await runInferOnProject(buildCommand)) { return; }
+      if (!await runInferOnProject(buildCommand)) { return false; }
     } else {
       wasFreshExecution = false;
     }
   } else if (executionMode === ExecutionMode.File) {
     if (!await readInferOut(`infer-out-${getSourceFileName(activeTextEditor)}`)) {
-      if (!await runInferOnCurrentFile()) { return; }
+      if (!await runInferOnCurrentFile()) { return false; }
     } else {
       wasFreshExecution = false;
     }
-  } else { return; }
+  } else { return false; }
 
   createInferAnnotations();
 
   vscode.window.showInformationMessage(`Enabled Infer for current ${executionMode === ExecutionMode.Project ? "project" : "file"} (${wasFreshExecution ? "fresh execution" : "read from infer-out"}).`);
+  return true;
 }
 
 function createInferAnnotations() {
@@ -154,8 +157,11 @@ async function runInferOnProject(buildCommand: string) {
   } catch (err) {}
 
   try {
-    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive -- ${buildCommand}`);
+    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive --continue -- ${buildCommand}`);
   } catch (err) {
+    if (!isExtensionEnabled) {
+      vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out`), {recursive: true});
+    }
     console.log(err);
     vscode.window.showErrorMessage("Execution of Infer failed (possible reasons: invalid build command, compilation error, project folder not opened in VSCode, etc.)");
     return false;
@@ -187,6 +193,7 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
       return false;
     }
   } catch (err) {
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-tmp`), {recursive: true});
     console.log(err);
     vscode.window.showErrorMessage("Single file execution not supported for this file.");
     return false;
@@ -209,6 +216,7 @@ async function runInferOnCurrentFile() {
   try {
     await exec(`infer --cost-only -o ${currentWorkspaceFolder}/${inferOutFolder} -- javac ${sourceFilePath}`);
   } catch (err) {
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutFolder}`), {recursive: true});
     console.log(err);
     vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
     return false;
