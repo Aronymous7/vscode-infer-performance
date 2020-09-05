@@ -148,6 +148,7 @@ export function cleanInferOut() {
 async function runInferOnProject(buildCommand: string) {
   resetSignificantlyChangedMethods();
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-classes`), {recursive: true});
 
   try {
     await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive -- ${buildCommand}`);
@@ -172,8 +173,14 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
 
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
+    await fs.promises.access(`${currentWorkspaceFolder}/infer-classes`);
+  } catch (err) {
+    console.log('test');
+    await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-classes`);
+  }
+  try {
     if (buildCommand.startsWith("./gradlew") || buildCommand.startsWith("gradle")) {
-      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o tmp-infer-out -- javac -cp $CLASSPATH:build/classes/main:build/libs ${sourceFilePath}`);
+      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o tmp-infer-out -- javac -cp infer-classes:build/classes/main:build/libs:CLASSPATH -d infer-classes ${sourceFilePath}`);
     } else {
       vscode.window.showErrorMessage("Unsupported build tool for this execution mode");
       return false;
