@@ -11,7 +11,7 @@ const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter
 export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange.event;
 
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|public [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
-let significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\(.+\)|for *\(.+\)|[A-Za-z_$][A-Za-z0-9_]+(?<!\W+(if|switch))\([^\)]*\))/g);
+let significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
 
 export function resetConstantMethods() {
   constantMethods = [];
@@ -88,6 +88,12 @@ export function significantCodeChangeCheck(savedText: string) {
           }
         }
         for (const match of matches) {
+          let diffTextPartValueBeforeMatch = diffTextPart.value.split(match)[0];
+          const regex = new RegExp(methodDeclarationRegex);
+          let declarationMatches: RegExpExecArray | null;
+          while ((declarationMatches = regex.exec(diffTextPartValueBeforeMatch)) !== null) {
+            containingMethod = declarationMatches[1];
+          }
           if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(match.split("(")[0])) {
             if (!significantlyChangedMethods.includes(containingMethod)) {
               significantlyChangedMethods.push(containingMethod);
