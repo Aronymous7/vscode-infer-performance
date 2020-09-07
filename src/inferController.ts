@@ -48,12 +48,12 @@ function updateActiveTextEditorAndSavedDocumentText() {
   } else { return false; }
 }
 
-function getSourceFileName(editor: vscode.TextEditor) {
+export function getSourceFileName(editor: vscode.TextEditor) {
   const sourceFileName = editor.document.fileName.split("/").pop()?.split(".")[0];
   return sourceFileName ? sourceFileName : '';
 }
 
-function getCurrentWorkspaceFolder() {
+export function getCurrentWorkspaceFolder() {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   return workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
 }
@@ -94,7 +94,7 @@ export async function executeInferForFileWithinProject() {
   return true;
 }
 
-export async function enableInfer(buildCommand?: string) {
+export async function enableInfer(enableMode: string, buildCommand?: string) {
   let wasFreshExecution = true;
   if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
 

@@ -12,7 +12,9 @@ import {
   setActiveTextEditor,
   updateSavedDocumentText,
   activeTextEditor,
-  savedDocumentTexts
+  savedDocumentTexts,
+  getCurrentWorkspaceFolder,
+  getSourceFileName
 } from './inferController';
 import {
   significantCodeChangeCheck,
@@ -61,6 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     executionMode = ExecutionMode.Project;
+
     let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
     if (!buildCommand) {
       buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build" }))?.trim();
@@ -71,18 +74,58 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
     }
-    showExecutionProgress(enableInfer, "Enabling (and executing) Infer...", buildCommand);
+
+    let quickPickArray: string[] = ["Fresh execution"];
+    const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+    try {
+      await fs.promises.access(`${currentWorkspaceFolder}/infer-out`);
+      quickPickArray.unshift("Read from infer-out");
+    } catch (err) {}
+    try {
+      await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/project-costs.json`);
+      quickPickArray.unshift("Load most recent performance data (infer-out-vscode)");
+    } catch (err) {}
+
+    const enableMode = await vscode.window.showQuickPick(quickPickArray);
+    if (!enableMode) {
+      vscode.window.showInformationMessage("Please choose one of the options.");
+      return;
+    }
+
+    showExecutionProgress(enableInfer, enableMode.startsWith("Fresh") ? "Enabling and executing Infer..." : "Enabling Infer...", enableMode, buildCommand);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForFile", () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForFile", async () => {
     if (isExtensionEnabled && executionMode === ExecutionMode.File) {
       vscode.window.showInformationMessage("Infer is already enabled for current file (use re-execution command to re-execute)");
       return;
     }
     executionMode = ExecutionMode.File;
-    showExecutionProgress(enableInfer, "Enabling (and executing) Infer...");
+
+    let quickPickArray: string[] = ["Fresh execution"];
+    const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+    let sourceFileName = "";
+    if (vscode.window.activeTextEditor) {
+      sourceFileName = getSourceFileName(vscode.window.activeTextEditor);
+    }
+    try {
+      await fs.promises.access(`${currentWorkspaceFolder}/infer-out`);
+      quickPickArray.unshift("Read from infer-out");
+    } catch (err) {}
+    try {
+      await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/file-${sourceFileName}-costs.json`);
+      quickPickArray.unshift("Load most recent performance data (infer-out-vscode)");
+    } catch (err) {}
+
+    const enableMode = await vscode.window.showQuickPick(quickPickArray);
+    if (!enableMode) {
+      vscode.window.showInformationMessage("Please choose one of the options.");
+      return;
+    }
+
+    showExecutionProgress(enableInfer, "Enabling (and executing) Infer...", enableMode);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -179,7 +222,7 @@ export function deactivate() {
   disposables = [];
 }
 
-function showExecutionProgress(executionFunction: Function, titleMessage: string, buildCommand?: string) {
+function showExecutionProgress(executionFunction: Function, titleMessage: string, enableMode?: string, buildCommand?: string) {
   vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
     title: titleMessage,
@@ -188,7 +231,9 @@ function showExecutionProgress(executionFunction: Function, titleMessage: string
     return new Promise(async resolve => {
       let success: boolean;
       if (buildCommand) {
-        success = await executionFunction(buildCommand);
+        success = await executionFunction(enableMode, buildCommand);
+      } else if (enableMode) {
+        success = await executionFunction(enableMode);
       } else {
         success = await executionFunction();
       }
