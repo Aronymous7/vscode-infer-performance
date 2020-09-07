@@ -50,7 +50,7 @@
       },
       {
         "command": "infer-for-vscode.cleanInferOut",
-        "title": "Clean Infer output",
+        "title": "Clean Infer output folder created by this extension",
         "category": "Infer"
       },
       {

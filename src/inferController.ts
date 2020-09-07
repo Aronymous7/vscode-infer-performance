@@ -100,13 +100,13 @@ export async function enableInfer(buildCommand?: string) {
 
   if (executionMode === ExecutionMode.Project) {
     if (!buildCommand) { return false; }
-    if (!await readInferOut("infer-out")) {
+    if (!await readInferCostsReport("project-costs.json")) {
       if (!await runInferOnProject(buildCommand)) { return false; }
     } else {
       wasFreshExecution = false;
     }
   } else if (executionMode === ExecutionMode.File) {
-    if (!await readInferOut(`infer-out-${getSourceFileName(activeTextEditor)}`)) {
+    if (!await readInferCostsReport(`file-${getSourceFileName(activeTextEditor)}-costs.json`)) {
       if (!await runInferOnCurrentFile()) { return false; }
     } else {
       wasFreshExecution = false;
@@ -139,40 +139,34 @@ export function disableInfer() {
 }
 
 export function cleanInferOut() {
-  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-  fs.readdirSync(currentWorkspaceFolder).forEach((file: string) => {
-    const filePath = `${currentWorkspaceFolder}/${file}`;
-    if (fs.statSync(filePath).isDirectory() && (file.startsWith("infer-out") || file === "infer-classes")) {
-      vscode.workspace.fs.delete(vscode.Uri.file(filePath), {recursive: true});
-    }
-  });
+  vscode.workspace.fs.delete(vscode.Uri.file(`${getCurrentWorkspaceFolder()}/infer-out-vscode`), {recursive: true});
 }
 
 async function runInferOnProject(buildCommand: string) {
-  resetSignificantlyChangedMethods();
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
-    await fs.promises.access(`${currentWorkspaceFolder}/infer-classes`);
-    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-classes`), {recursive: true});
-  } catch (err) {}
-
-  try {
-    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only --reactive --continue -- ${buildCommand}`);
+    await exec(`cd ${currentWorkspaceFolder} && infer -o infer-out-vscode/project-raw --cost-only --reactive --continue -- ${buildCommand}`);
   } catch (err) {
     if (!isExtensionEnabled) {
-      vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out`), {recursive: true});
+      vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/project-raw`), {recursive: true});
     }
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/project-raw`), {recursive: true});
     console.log(err);
     vscode.window.showErrorMessage("Execution of Infer failed (possible reasons: invalid build command, compilation error, project folder not opened in VSCode, etc.)");
     return false;
   }
 
-  return await readRawInferOutput("infer-out");
+  resetSignificantlyChangedMethods();
+  try {
+    await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/classes`), {recursive: true});
+  } catch (err) {}
+
+  return await readRawInferOutput("project-raw");
 }
 
 async function runInferOnCurrentFileWithinProject(buildCommand: string) {
   const sourceFilePath = activeTextEditor.document.fileName;
-  removeSignificantlyChangedMethods();
 
   if (!sourceFilePath.endsWith(".java")) {
     vscode.window.showInformationMessage('Infer can only be executed on Java files.');
@@ -181,25 +175,27 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
 
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
-    await fs.promises.access(`${currentWorkspaceFolder}/infer-classes`);
+    await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
   } catch (err) {
-    await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-classes`);
+    await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
   }
   try {
     if (buildCommand.startsWith("./gradlew") || buildCommand.startsWith("gradle")) {
-      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o infer-out-tmp -- javac -cp infer-classes:build/classes/main:build/libs:$CLASSPATH -d infer-classes ${sourceFilePath}`);
+      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o infer-out-vscode/file-within-project-raw -- javac -cp infer-out-vscode/classes:build/classes/main:build/libs:$CLASSPATH -d infer-out-vscode/classes ${sourceFilePath}`);
     } else {
       vscode.window.showErrorMessage("Unsupported build tool for this execution mode");
       return false;
     }
   } catch (err) {
-    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-tmp`), {recursive: true});
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/file-within-project-raw`), {recursive: true});
     console.log(err);
     vscode.window.showErrorMessage("Single file execution not supported for this file.");
     return false;
   }
 
-  return await readRawInferOutput("infer-out-tmp", true);
+  removeSignificantlyChangedMethods();
+
+  return await readRawInferOutput("file-within-project-raw", true);
 }
 
 async function runInferOnCurrentFile() {
@@ -212,20 +208,20 @@ async function runInferOnCurrentFile() {
   }
 
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-  const inferOutFolder = `infer-out-${getSourceFileName(activeTextEditor)}`;
+  const inferOutRawFolder = `file-${getSourceFileName(activeTextEditor)}-raw`;
   try {
-    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/${inferOutFolder} -- javac ${sourceFilePath}`);
+    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/infer-out-vscode/${inferOutRawFolder} -- javac ${sourceFilePath}`);
   } catch (err) {
-    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutFolder}`), {recursive: true});
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/${inferOutRawFolder}`), {recursive: true});
     console.log(err);
     vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
     return false;
   }
 
-  return await readRawInferOutput(inferOutFolder);
+  return await readRawInferOutput(inferOutRawFolder);
 }
 
-async function readRawInferOutput(inferOutFolder: string, isSingleFileWithinProject?: boolean) {
+async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinProject?: boolean) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
   if (isSingleFileWithinProject) {
@@ -235,10 +231,8 @@ async function readRawInferOutput(inferOutFolder: string, isSingleFileWithinProj
   }
   let inferCost: InferCostItem[] = [];
   try {
-    const inferCostRawJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`);
-    if (isSingleFileWithinProject) {
-      vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutFolder}`), {recursive: true});
-    }
+    const inferCostRawJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-vscode/${inferOutRawFolder}/costs-report.json`);
+    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/${inferOutRawFolder}`), {recursive: true});
     let inferCostRaw = JSON.parse(inferCostRawJsonString);
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
@@ -294,11 +288,11 @@ async function readRawInferOutput(inferOutFolder: string, isSingleFileWithinProj
 
   if (!isSingleFileWithinProject) {
     const inferCostJsonString = JSON.stringify(inferCost);
-    fs.promises.writeFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`, inferCostJsonString, 'utf8');
+    fs.promises.writeFile(`${currentWorkspaceFolder}/infer-out-vscode/${inferOutRawFolder.slice(0, -4)}-costs.json`, inferCostJsonString, 'utf8');
   } else {
     let oldInferCost: InferCostItem[];
     try {
-      const oldInferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`);
+      const oldInferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-vscode/project-costs.json`);
       oldInferCost = JSON.parse(oldInferCostJsonString);
     } catch (err) {
       return false;
@@ -306,18 +300,18 @@ async function readRawInferOutput(inferOutFolder: string, isSingleFileWithinProj
     oldInferCost = oldInferCost.filter(oldInferCostItem => oldInferCostItem.loc.file !== inferCost[0].loc.file);
     inferCost = inferCost.concat(oldInferCost);
     const inferCostJsonString = JSON.stringify(inferCost);
-    fs.promises.writeFile(`${currentWorkspaceFolder}/infer-out/costs-report.json`, inferCostJsonString, 'utf8');
+    fs.promises.writeFile(`${currentWorkspaceFolder}/infer-out-vscode/project-costs.json`, inferCostJsonString, 'utf8');
   }
 
   return true;
 }
 
-async function readInferOut(inferOutFolder: string) {
+async function readInferCostsReport(costsReportFile: string) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
   let inferCost: InferCostItem[] = [];
   try {
-    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutFolder}/costs-report.json`);
+    const inferCostJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/infer-out-vscode/${costsReportFile}`);
     inferCost = JSON.parse(inferCostJsonString);
   } catch (err) {
     return false;
