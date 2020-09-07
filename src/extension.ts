@@ -86,7 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
       quickPickArray.unshift("Load most recent performance data (infer-out-vscode)");
     } catch (err) {}
 
-    const enableMode = await vscode.window.showQuickPick(quickPickArray);
+    const enableMode = await vscode.window.showQuickPick(quickPickArray, {placeHolder: "What performance data should be used?"});
     if (!enableMode) {
       vscode.window.showInformationMessage("Please choose one of the options.");
       return;
@@ -119,7 +119,7 @@ export function activate(context: vscode.ExtensionContext) {
       quickPickArray.unshift("Load most recent performance data (infer-out-vscode)");
     } catch (err) {}
 
-    const enableMode = await vscode.window.showQuickPick(quickPickArray);
+    const enableMode = await vscode.window.showQuickPick(quickPickArray, {placeHolder: "What performance data should be used?"});
     if (!enableMode) {
       vscode.window.showInformationMessage("Please choose one of the options.");
       return;
