@@ -136,7 +136,7 @@ export function cleanInferOut() {
 async function runInferOnProject(buildCommand: string) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
-    await exec(`cd ${currentWorkspaceFolder} && infer -o infer-out-vscode/project-raw --cost-only --reactive --continue -- ${buildCommand}`);
+    await exec(`cd ${currentWorkspaceFolder} && infer -o infer-out-vscode/project-raw --cost-only --keep-going --reactive --continue -- ${buildCommand}`);
   } catch (err) {
     vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/project-raw`), {recursive: true});
     console.log(err);
@@ -234,12 +234,12 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
           lnum: inferCostRawItem.loc.lnum
         },
         alloc_cost: {
-          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/\./g, '*'),
+          polynomial: inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/ \. /g, ' * '),
           degree: +inferCostRawItem.alloc_cost.hum.hum_degree,
           big_o: inferCostRawItem.alloc_cost.hum.big_o
         },
         exec_cost: {
-          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/\./g, '*'),
+          polynomial: inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/ \. /g, ' * '),
           degree: +inferCostRawItem.exec_cost.hum.hum_degree,
           big_o: inferCostRawItem.exec_cost.hum.big_o
         }

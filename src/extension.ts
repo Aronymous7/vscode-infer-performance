@@ -53,9 +53,9 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    let classesFolder: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('packageFolder');
+    let classesFolder: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('classesFolder');
     if (!classesFolder) {
-      classesFolder = (await vscode.window.showInputBox({ prompt: 'Specify the root package folder containing the compiled files.', placeHolder: "e.g. build/classes/main", ignoreFocusOut: true }))?.trim();
+      classesFolder = (await vscode.window.showInputBox({ prompt: 'Specify the root package folder containing the compiled files.', placeHolder: "e.g. target/classes, build/classes/main, etc.", ignoreFocusOut: true }))?.trim();
       if (classesFolder) {
         vscode.workspace.getConfiguration('infer-for-vscode').update('classesFolder', classesFolder, true);
       } else {
@@ -78,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
     if (!buildCommand) {
-      buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build", ignoreFocusOut: true }))?.trim();
+      buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. mvn compile, ./gradlew build, etc.", ignoreFocusOut: true }))?.trim();
       if (buildCommand && validateBuildCommand(buildCommand)) {
         vscode.workspace.getConfiguration('infer-for-vscode').update('buildCommand', buildCommand, true);
       } else {
@@ -87,7 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }
 
-    let quickPickArray: string[] = ["Fresh execution"];
+    let quickPickArray: string[] = ["Fresh execution (make sure to clean the project before)"];
     const currentWorkspaceFolder = getCurrentWorkspaceFolder();
     try {
       await fs.promises.access(`${currentWorkspaceFolder}/infer-out`);
@@ -149,6 +149,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     isExtensionEnabled = false;
     disableInfer();
+    vscode.window.showInformationMessage("Infer disabled.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

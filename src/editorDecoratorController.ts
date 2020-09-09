@@ -52,7 +52,8 @@ export function createEditorDecorators() {
         const declarationDecoration = { range: methodDeclaration.declarationRange };
         const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.polynomial} ~~ ${inferCostItem.exec_cost.big_o}` };
 
-        const costDegreeIndex = inferCostItem.exec_cost.degree < costDegreeDecorationTypesLength ? inferCostItem.exec_cost.degree : costDegreeDecorationTypesLength - 1;
+        const costDegreeIndex = ((inferCostItem.exec_cost.degree !== null) && (inferCostItem.exec_cost.degree < costDegreeDecorationTypesLength)) ?
+            inferCostItem.exec_cost.degree : costDegreeDecorationTypesLength - 1;
         costDegreeDecorations[costDegreeIndex].push(nameDecoration);
 
         const newCostChangeDecorationType = significantCostChangeDecorationType(inferCostItem);
