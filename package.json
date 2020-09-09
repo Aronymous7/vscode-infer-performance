@@ -83,6 +83,11 @@
           "type": "string",
           "description": "The build command to be used by Infer for compiling your project. Currently supported build tools: javac, maven, ant, gradle",
           "pattern": "^(javac|mvn|ant|gradle|\\.\\/gradlew).*"
+        },
+        "infer-for-vscode.classesFolder": {
+          "type": "string",
+          "description": "The root package folder containing the compiled files from the project build. Required for single file execution within project.",
+          "minLength": 1
         }
       }
     }

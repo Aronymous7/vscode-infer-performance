@@ -58,35 +58,23 @@ export function getCurrentWorkspaceFolder() {
   return workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
 }
 
-export async function executeInfer() {
+export async function executeInfer(classesFolder?: string) {
   savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
 
   if (executionMode === ExecutionMode.Project) {
-    const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
-    if (!buildCommand) {
-      vscode.window.showErrorMessage("Build command could not be found in VSCode config");
-      return false;
+    if (!classesFolder) {
+      const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
+      if (!buildCommand) {
+        vscode.window.showErrorMessage("Build command could not be found in VSCode config");
+        return false;
+      }
+      if (!await runInferOnProject(buildCommand)) { return false; }
+    } else {
+      if (!await runInferOnCurrentFileWithinProject(classesFolder)) { return false; }
     }
-    if (!await runInferOnProject(buildCommand)) { return false; }
   } else if (executionMode === ExecutionMode.File) {
     if (!await runInferOnCurrentFile()) { return false; }
   } else { return false; }
-
-  createInferAnnotations();
-
-  vscode.window.showInformationMessage("Executed Infer.");
-  return true;
-}
-
-export async function executeInferForFileWithinProject() {
-  savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
-
-  const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
-  if (!buildCommand) {
-    vscode.window.showErrorMessage("Build command could not be found in VSCode config");
-    return false;
-  }
-  if (!await runInferOnCurrentFileWithinProject(buildCommand)) { return false; }
 
   createInferAnnotations();
 
@@ -150,9 +138,6 @@ async function runInferOnProject(buildCommand: string) {
   try {
     await exec(`cd ${currentWorkspaceFolder} && infer -o infer-out-vscode/project-raw --cost-only --reactive --continue -- ${buildCommand}`);
   } catch (err) {
-    if (!isExtensionEnabled) {
-      vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/project-raw`), {recursive: true});
-    }
     vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/project-raw`), {recursive: true});
     console.log(err);
     vscode.window.showErrorMessage("Execution of Infer failed (possible reasons: invalid build command, compilation error, project folder not opened in VSCode, etc.)");
@@ -168,7 +153,7 @@ async function runInferOnProject(buildCommand: string) {
   return await readRawInferOutput("infer-out-vscode/project-raw");
 }
 
-async function runInferOnCurrentFileWithinProject(buildCommand: string) {
+async function runInferOnCurrentFileWithinProject(classesFolder: string) {
   const sourceFilePath = activeTextEditor.document.fileName;
 
   if (!sourceFilePath.endsWith(".java")) {
@@ -183,12 +168,7 @@ async function runInferOnCurrentFileWithinProject(buildCommand: string) {
     await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
   }
   try {
-    if (buildCommand.startsWith("./gradlew") || buildCommand.startsWith("gradle")) {
-      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o infer-out-vscode/file-within-project-raw -- javac -cp infer-out-vscode/classes:build/classes/main:build/libs:$CLASSPATH -d infer-out-vscode/classes ${sourceFilePath}`);
-    } else {
-      vscode.window.showErrorMessage("Unsupported build tool for this execution mode");
-      return false;
-    }
+    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o infer-out-vscode/file-within-project-raw -- javac -cp infer-out-vscode/classes:${classesFolder}:build/libs:$CLASSPATH -d infer-out-vscode/classes ${sourceFilePath}`);
   } catch (err) {
     vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/file-within-project-raw`), {recursive: true});
     console.log(err);
@@ -235,7 +215,9 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
   let inferCost: InferCostItem[] = [];
   try {
     const inferCostRawJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutRawFolder}/costs-report.json`);
-    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutRawFolder}`), {recursive: true});
+    // if (inferOutRawFolder !== "infer-out") {
+    //   vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutRawFolder}`), {recursive: true});
+    // }
     let inferCostRaw = JSON.parse(inferCostRawJsonString);
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {

@@ -4,7 +4,6 @@ import { validateBuildCommand } from './validators';
 import {
   inferCosts,
   executeInfer,
-  executeInferForFileWithinProject,
   enableInfer,
   disableInfer,
   cleanInferOut,
@@ -44,15 +43,28 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.reExecuteForFileWithinProject", () => {
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.reExecuteForFileWithinProject", async () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
       return;
-    } else if (executionMode === ExecutionMode.File) {
+    }
+    if (executionMode === ExecutionMode.File) {
       vscode.window.showInformationMessage("Infer is not enabled for a project.");
       return;
     }
-    showExecutionProgress(executeInferForFileWithinProject, "Executing Infer...");
+
+    let classesFolder: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('packageFolder');
+    if (!classesFolder) {
+      classesFolder = (await vscode.window.showInputBox({ prompt: 'Specify the root package folder containing the compiled files.', placeHolder: "e.g. build/classes/main", ignoreFocusOut: true }))?.trim();
+      if (classesFolder) {
+        vscode.workspace.getConfiguration('infer-for-vscode').update('classesFolder', classesFolder, true);
+      } else {
+        vscode.window.showInformationMessage("No folder entered.");
+        return;
+      }
+    }
+
+    showExecutionProgress(async () => { return await executeInfer(classesFolder); }, "Executing Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -66,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
     if (!buildCommand) {
-      buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build" }))?.trim();
+      buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. ./gradlew build", ignoreFocusOut: true }))?.trim();
       if (buildCommand && validateBuildCommand(buildCommand)) {
         vscode.workspace.getConfiguration('infer-for-vscode').update('buildCommand', buildCommand, true);
       } else {
@@ -92,7 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    showExecutionProgress(enableInfer, enableMode.startsWith("Fresh") ? "Enabling and executing Infer..." : "Enabling Infer...", enableMode, buildCommand);
+    showExecutionProgress(async () => { return await enableInfer(enableMode, buildCommand); }, enableMode.startsWith("Fresh") ? "Enabling and executing Infer..." : "Enabling Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -125,7 +137,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    showExecutionProgress(enableInfer, "Enabling (and executing) Infer...", enableMode);
+    showExecutionProgress(async () => { return await enableInfer(enableMode); }, "Enabling (and executing) Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -148,7 +160,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.addMethodToWhitelist", async () => {
-    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should not trigger re-execution of Infer.', placeHolder: "e.g. cheapMethod" }))?.trim();
+    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should not trigger re-execution of Infer.', placeHolder: "e.g. cheapMethod", ignoreFocusOut: true }))?.trim();
     if (methodName) {
       addMethodToWhitelist(methodName);
     }
@@ -157,7 +169,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.removeMethodFromWhitelist", async () => {
-    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should be removed from the whitelist.', placeHolder: "e.g. expensiveMethod" }))?.trim();
+    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should be removed from the whitelist.', placeHolder: "e.g. expensiveMethod", ignoreFocusOut: true }))?.trim();
     if (methodName) {
       removeMethodFromWhitelist(methodName);
     }
@@ -222,7 +234,7 @@ export function deactivate() {
   disposables = [];
 }
 
-function showExecutionProgress(executionFunction: Function, titleMessage: string, enableMode?: string, buildCommand?: string) {
+function showExecutionProgress(executionFunction: Function, titleMessage: string) {
   vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
     title: titleMessage,
@@ -230,13 +242,7 @@ function showExecutionProgress(executionFunction: Function, titleMessage: string
   }, () => {
     return new Promise(async resolve => {
       let success: boolean;
-      if (buildCommand) {
-        success = await executionFunction(enableMode, buildCommand);
-      } else if (enableMode) {
-        success = await executionFunction(enableMode);
-      } else {
-        success = await executionFunction();
-      }
+      success = await executionFunction();
       if (success) {
         isExtensionEnabled = true;
       }
