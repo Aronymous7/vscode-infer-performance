@@ -44,6 +44,11 @@
         "category": "Infer"
       },
       {
+        "command": "infer-for-vscode.readInferOut",
+        "title": "Load performance data from infer-out folder in project root",
+        "category": "Infer"
+      },
+      {
         "command": "infer-for-vscode.disable",
         "title": "Disable performance analysis",
         "category": "Infer"

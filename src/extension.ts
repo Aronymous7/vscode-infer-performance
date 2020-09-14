@@ -5,6 +5,7 @@ import {
   inferCosts,
   executeInfer,
   enableInfer,
+  readInferOut,
   disableInfer,
   cleanInferOut,
   setCurrentInferCost,
@@ -142,6 +143,16 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.readInferOut", () => {
+    if (!isExtensionEnabled) {
+      vscode.window.showInformationMessage("Infer is not enabled.");
+      return;
+    }
+    showExecutionProgress(readInferOut, "Reading infer-out folder...");
+  });
+  disposables.push(disposableCommand);
+  context.subscriptions.push(disposableCommand);
+
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disable", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Infer is not enabled.");
@@ -205,6 +216,7 @@ export function activate(context: vscode.ExtensionContext) {
         if (!savedDocumentTexts.has(editor.document.fileName)) {
           updateSavedDocumentText(editor);
         }
+        significantCodeChangeCheck(editor.document.getText());
         if (!hasFileCodeLenses.get(editor.document.fileName)) {
           createCodeLenses();
         }

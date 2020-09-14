@@ -59,7 +59,10 @@ export function getCurrentWorkspaceFolder() {
 }
 
 export async function executeInfer(classesFolder?: string) {
-  savedDocumentTexts.set(activeTextEditor.document.fileName, activeTextEditor.document.getText());
+  if (executionMode === ExecutionMode.Project && !classesFolder) {
+    savedDocumentTexts = new Map<string, string>();
+  }
+  updateSavedDocumentText(activeTextEditor);
 
   if (executionMode === ExecutionMode.Project) {
     if (!classesFolder) {
@@ -69,6 +72,7 @@ export async function executeInfer(classesFolder?: string) {
         return false;
       }
       if (!await runInferOnProject(buildCommand)) { return false; }
+      disposeCodeLensProviders();
     } else {
       if (!await runInferOnCurrentFileWithinProject(classesFolder)) { return false; }
     }
@@ -107,6 +111,23 @@ export async function enableInfer(enableMode: string, buildCommand?: string) {
   createInferAnnotations();
 
   vscode.window.showInformationMessage(`Enabled Infer for current ${executionMode === ExecutionMode.Project ? "project" : "file"}.`);
+  return true;
+}
+
+export async function readInferOut() {
+  savedDocumentTexts = new Map<string, string>();
+  updateSavedDocumentText(activeTextEditor);
+
+  if (!await readRawInferOutput("infer-out")) {
+    vscode.window.showErrorMessage("infer-out folder not found in project root.");
+    return false;
+  }
+
+  resetSignificantlyChangedMethods();
+  disposeCodeLensProviders();
+  createInferAnnotations();
+
+  vscode.window.showInformationMessage("Loaded data from infer-out.");
   return true;
 }
 
@@ -207,11 +228,6 @@ async function runInferOnCurrentFile() {
 async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinProject?: boolean) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
-  if (isSingleFileWithinProject) {
-    removeConstantMethods();
-  } else {
-    resetConstantMethods();
-  }
   let inferCost: InferCostItem[] = [];
   try {
     const inferCostRawJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutRawFolder}/costs-report.json`);
@@ -219,6 +235,11 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
     //   vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutRawFolder}`), {recursive: true});
     // }
     let inferCostRaw = JSON.parse(inferCostRawJsonString);
+    if (isSingleFileWithinProject) {
+      removeConstantMethods();
+    } else {
+      resetConstantMethods();
+    }
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
