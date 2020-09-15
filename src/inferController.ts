@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { InferCostItem, ExecutionMode } from './types';
+import { InferCostItem, ExecutionMode, EnableMode } from './types';
 import { executionMode, isExtensionEnabled } from './extension';
 import {
   constantMethods,
@@ -86,22 +86,22 @@ export async function executeInfer(classesFolder?: string) {
   return true;
 }
 
-export async function enableInfer(enableMode: string, buildCommand?: string) {
+export async function enableInfer(enableMode: EnableMode, buildCommand?: string) {
   if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
 
   if (executionMode === ExecutionMode.Project) {
     if (!buildCommand) { return false; }
-    if (enableMode.startsWith("Load")) {
+    if (enableMode === EnableMode.LoadRecentData) {
       if (!await readInferCostsReport("project-costs.json")) { return false; }
-    } else if (enableMode.startsWith("Read")) {
+    } else if (enableMode === EnableMode.ReadInferOut) {
       if (!await readRawInferOutput("infer-out")) { return false; }
     } else {
       if (!await runInferOnProject(buildCommand)) { return false; }
     }
   } else if (executionMode === ExecutionMode.File) {
-    if (enableMode.startsWith("Load")) {
+    if (enableMode === EnableMode.LoadRecentData) {
       if (!await readInferCostsReport(`file-${getSourceFileName(activeTextEditor)}-costs.json`)) { return false; }
-    } else if (enableMode.startsWith("Read")) {
+    } else if (enableMode === EnableMode.ReadInferOut) {
       if (!await readRawInferOutput("infer-out")) { return false; }
     } else {
       if (!await runInferOnCurrentFile()) { return false; }

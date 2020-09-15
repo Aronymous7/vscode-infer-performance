@@ -5,6 +5,12 @@ export enum ExecutionMode {
   File
 }
 
+export enum EnableMode {
+  LoadRecentData,
+  ReadInferOut,
+  FreshExecution
+}
+
 export interface InferCostItem {
   readonly id: string;
   readonly method_name: string;

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ExecutionMode } from './types';
+import { ExecutionMode, EnableMode } from './types';
 import { validateBuildCommand } from './validators';
 import {
   inferCosts,
@@ -101,13 +101,17 @@ export function activate(context: vscode.ExtensionContext) {
       quickPickArray.unshift("Load most recent performance data (infer-out-vscode)");
     } catch (err) {}
 
-    const enableMode = await vscode.window.showQuickPick(quickPickArray, {placeHolder: "What performance data should be used?"});
-    if (!enableMode) {
+    const enableModeString = await vscode.window.showQuickPick(quickPickArray, {placeHolder: "What performance data should be used?"});
+    if (!enableModeString) {
       vscode.window.showInformationMessage("Please choose one of the options.");
       return;
     }
 
-    showExecutionProgress(async () => { return await enableInfer(enableMode, buildCommand); }, enableMode.startsWith("Fresh") ? "Enabling and executing Infer..." : "Enabling Infer...");
+    const enableMode = enableModeString.startsWith("Load") ? EnableMode.LoadRecentData :
+                      (enableModeString.startsWith("Read") ? EnableMode.ReadInferOut : EnableMode.FreshExecution);
+
+    showExecutionProgress(async () => { return await enableInfer(enableMode, buildCommand); },
+                          enableMode === EnableMode.FreshExecution ? "Enabling and executing Infer..." : "Enabling Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -136,13 +140,17 @@ export function activate(context: vscode.ExtensionContext) {
       quickPickArray.unshift("Load most recent performance data (infer-out-vscode)");
     } catch (err) {}
 
-    const enableMode = await vscode.window.showQuickPick(quickPickArray, {placeHolder: "What performance data should be used?"});
-    if (!enableMode) {
+    const enableModeString = await vscode.window.showQuickPick(quickPickArray, {placeHolder: "What performance data should be used?"});
+    if (!enableModeString) {
       vscode.window.showInformationMessage("Please choose one of the options.");
       return;
     }
 
-    showExecutionProgress(async () => { return await enableInfer(enableMode); }, "Enabling (and executing) Infer...");
+    const enableMode = enableModeString.startsWith("Load") ? EnableMode.LoadRecentData :
+                      (enableModeString.startsWith("Read") ? EnableMode.ReadInferOut : EnableMode.FreshExecution);
+
+    showExecutionProgress(async () => { return await enableInfer(enableMode); },
+                          enableMode === EnableMode.FreshExecution ? "Enabling and executing Infer..." : "Enabling Infer...");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
