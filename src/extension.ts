@@ -196,7 +196,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensError", () => {
-    vscode.window.showInformationMessage("Please save and re-execute Infer.");
+    vscode.window.showInformationMessage("Re-execute Infer to get fresh performance data.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

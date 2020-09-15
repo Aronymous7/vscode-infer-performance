@@ -235,11 +235,18 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
     //   vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutRawFolder}`), {recursive: true});
     // }
     let inferCostRaw = JSON.parse(inferCostRawJsonString);
+
+    if (inferCost.length === 0) {
+      vscode.window.showErrorMessage("The costs-report from Infer is empty.");
+      return false;
+    }
+
     if (isSingleFileWithinProject) {
       removeConstantMethods();
     } else {
       resetConstantMethods();
     }
+
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
@@ -327,6 +334,12 @@ async function readInferCostsReport(costsReportFile: string) {
   } catch (err) {
     return false;
   }
+
+  if (inferCost.length === 0) {
+    vscode.window.showErrorMessage("The costs file for this project/file is empty.");
+    return false;
+  }
+
   for (const inferCostRawItem of inferCost) {
     if (inferCostRawItem.exec_cost.degree === 0) {
       constantMethods.push(inferCostRawItem.method_name);

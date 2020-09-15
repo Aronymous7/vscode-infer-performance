@@ -56,7 +56,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
       }
       if (!currentInferCostItem) {
         codeLens.command = {
-          title: "Method signature has changed, please save the file and re-execute Infer.",
+          title: "No performance data available for this method.",
           command: "infer-for-vscode.detailCodelensError"
         };
         return codeLens;
