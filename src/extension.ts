@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ExecutionMode, EnableMode } from './types';
-import { validateBuildCommand } from './validators';
+import { validateBuildCommand, isInferInstalled } from './validators';
 import {
   inferCosts,
   executeInfer,
@@ -32,7 +32,6 @@ let disposables: vscode.Disposable[] = [];
 export let isExtensionEnabled = false;
 export let executionMode: ExecutionMode;
 
-// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.reExecute", () => {
     if (!isExtensionEnabled) {
@@ -71,6 +70,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForProject", async () => {
+    if (!await isInferInstalled()) {
+      vscode.window.showErrorMessage("Infer is not installed on your system.");
+      return;
+    }
+
     if (isExtensionEnabled && executionMode === ExecutionMode.Project) {
       vscode.window.showInformationMessage("Infer is already enabled for current project (use re-execution command to re-execute)");
       return;
@@ -117,6 +121,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForFile", async () => {
+    if (!await isInferInstalled()) {
+      vscode.window.showErrorMessage("Infer is not installed on your system.");
+      return;
+    }
+
     if (isExtensionEnabled && executionMode === ExecutionMode.File) {
       vscode.window.showInformationMessage("Infer is already enabled for current file (use re-execution command to re-execute)");
       return;
