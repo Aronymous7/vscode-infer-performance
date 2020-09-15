@@ -2,7 +2,7 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
 export function validateBuildCommand(buildCommand: string) {
-  return ["javac", "mvn", "ant", "gradle", "./gradlew"].includes(buildCommand.split(" ")[0]);
+  return ["javac", "mvn", "gradle", "./gradlew"].includes(buildCommand.split(" ")[0]);
 }
 
 export async function isInferInstalled() {

@@ -89,7 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (buildCommand && validateBuildCommand(buildCommand)) {
         vscode.workspace.getConfiguration('infer-for-vscode').update('buildCommand', buildCommand, true);
       } else {
-        vscode.window.showErrorMessage("Invalid build command entered. Currently supported build tools: javac, maven, ant, gradle");
+        vscode.window.showErrorMessage("Invalid build command entered. Currently supported build tools: javac, maven, gradle");
         return;
       }
     }

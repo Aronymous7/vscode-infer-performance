@@ -4,7 +4,7 @@ import { activeTextEditor, savedDocumentTexts, inferCosts, currentInferCost } fr
 
 const Diff = require('diff');
 
-export let constantMethods: string[] = [];
+export let nonConstantMethods: string[] = [];
 export let significantlyChangedMethods: string[] = [];
 
 const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
@@ -13,18 +13,18 @@ export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|(public|protected|private|return) [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\) *(?:\{(?:.*\})?|;)?/gm);
 let significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
 
-export function resetConstantMethods() {
-  constantMethods = [];
+export function resetNonConstantMethods() {
+  nonConstantMethods = [];
 }
 export function resetSignificantlyChangedMethods() {
   significantlyChangedMethods = [];
 }
 
-export function removeConstantMethods() {
+export function removeNonConstantMethods() {
   for (const inferCostItem of currentInferCost) {
-    const methodIndex = constantMethods.indexOf(inferCostItem.method_name);
+    const methodIndex = nonConstantMethods.indexOf(inferCostItem.method_name);
     if (methodIndex > -1) {
-      constantMethods.splice(methodIndex, 1);
+      nonConstantMethods.splice(methodIndex, 1);
     }
   }
 }
@@ -65,7 +65,7 @@ export function significantCodeChangeCheck(savedText: string) {
   const previousText = savedDocumentTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
 
-  const methodWhitelist = constantMethods.concat(vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []));
+  const methodWhitelist: string[] = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
   let containingMethods: string[] = [];
   let isSignificant = false;
@@ -94,7 +94,8 @@ export function significantCodeChangeCheck(savedText: string) {
           while ((declarationMatches = regex.exec(diffTextPartValueBeforeMatch)) !== null) {
             containingMethod = declarationMatches[1];
           }
-          if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(match.split("(")[0])) {
+          let methodName = match.split("(")[0];
+          if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(methodName) && nonConstantMethods.includes(methodName)) {
             if (!significantlyChangedMethods.includes(containingMethod)) {
               significantlyChangedMethods.push(containingMethod);
             }

@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import { InferCostItem, ExecutionMode, EnableMode } from './types';
 import { executionMode, isExtensionEnabled } from './extension';
 import {
-  constantMethods,
-  resetConstantMethods,
-  removeConstantMethods,
+  nonConstantMethods,
+  resetNonConstantMethods,
+  removeNonConstantMethods,
   resetSignificantlyChangedMethods,
   removeSignificantlyChangedMethods
 } from './javaCodeHandler';
@@ -146,7 +146,7 @@ export function disableInfer() {
   disposeDecorationTypes();
   disposeCodeLensProviders();
   disposeWebviews();
-  resetConstantMethods();
+  resetNonConstantMethods();
   resetSignificantlyChangedMethods();
   inferCosts = new Map<string, InferCostItem[]>();
   savedDocumentTexts = new Map<string, string>();
@@ -236,17 +236,17 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
     }
 
     if (isSingleFileWithinProject) {
-      removeConstantMethods();
+      removeNonConstantMethods();
     } else {
-      resetConstantMethods();
+      resetNonConstantMethods();
     }
 
     for (let inferCostRawItem of inferCostRaw) {
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
       }
-      if (+inferCostRawItem.exec_cost.hum.hum_degree === 0) {
-        constantMethods.push(inferCostRawItem.procedure_name);
+      if (+inferCostRawItem.exec_cost.hum.hum_degree !== 0) {
+        nonConstantMethods.push(inferCostRawItem.procedure_name);
       }
       inferCost.push({
         id: inferCostRawItem.procedure_id,
@@ -335,8 +335,8 @@ async function readInferCostsReport(costsReportFile: string) {
   }
 
   for (const inferCostRawItem of inferCost) {
-    if (inferCostRawItem.exec_cost.degree === 0) {
-      constantMethods.push(inferCostRawItem.method_name);
+    if (inferCostRawItem.exec_cost.degree !== 0) {
+      nonConstantMethods.push(inferCostRawItem.method_name);
     }
   }
 
