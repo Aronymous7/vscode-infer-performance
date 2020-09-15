@@ -94,8 +94,9 @@ export function significantCodeChangeCheck(savedText: string) {
           while ((declarationMatches = regex.exec(diffTextPartValueBeforeMatch)) !== null) {
             containingMethod = declarationMatches[1];
           }
-          let methodName = match.split("(")[0];
-          if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(methodName) && nonConstantMethods.includes(methodName)) {
+          let methodName = match.split("(")[0].trim();
+          if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(methodName) &&
+              (nonConstantMethods.includes(methodName) || ["while", "for"].includes(methodName))) {
             if (!significantlyChangedMethods.includes(containingMethod)) {
               significantlyChangedMethods.push(containingMethod);
             }

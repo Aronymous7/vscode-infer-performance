@@ -186,7 +186,7 @@ async function runInferOnCurrentFile(classesFolder?: string) {
   }
 
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-  const inferOutRawFolder = classesFolder ? "infer-out-vscode/file-within-project-raw" : `infer-out-vscode/file-${getSourceFileName(activeTextEditor)}-raw`;
+  const inferOutRawFolder = `infer-out-vscode/file-${getSourceFileName(activeTextEditor)}-raw`;
 
   try {
     if (classesFolder) {
