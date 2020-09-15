@@ -74,7 +74,7 @@ export async function executeInfer(classesFolder?: string) {
       if (!await runInferOnProject(buildCommand)) { return false; }
       disposeCodeLensProviders();
     } else {
-      if (!await runInferOnCurrentFileWithinProject(classesFolder)) { return false; }
+      if (!await runInferOnCurrentFile(classesFolder)) { return false; }
     }
   } else if (executionMode === ExecutionMode.File) {
     if (!await runInferOnCurrentFile()) { return false; }
@@ -146,6 +146,8 @@ export function disableInfer() {
   disposeDecorationTypes();
   disposeCodeLensProviders();
   disposeWebviews();
+  resetConstantMethods();
+  resetSignificantlyChangedMethods();
   inferCosts = new Map<string, InferCostItem[]>();
   savedDocumentTexts = new Map<string, string>();
 }
@@ -165,64 +167,56 @@ async function runInferOnProject(buildCommand: string) {
     return false;
   }
 
-  resetSignificantlyChangedMethods();
   try {
     await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
     vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/classes`), {recursive: true});
   } catch (err) {}
 
+  resetSignificantlyChangedMethods();
+
   return await readRawInferOutput("infer-out-vscode/project-raw");
 }
 
-async function runInferOnCurrentFileWithinProject(classesFolder: string) {
+async function runInferOnCurrentFile(classesFolder?: string) {
   const sourceFilePath = activeTextEditor.document.fileName;
 
   if (!sourceFilePath.endsWith(".java")) {
-    vscode.window.showInformationMessage('Infer can only be executed on Java files.');
+    vscode.window.showErrorMessage('Infer can only be executed on Java files.');
     return false;
   }
 
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
+  const inferOutRawFolder = classesFolder ? "infer-out-vscode/file-within-project-raw" : `infer-out-vscode/file-${getSourceFileName(activeTextEditor)}-raw`;
+
   try {
-    await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
-  } catch (err) {
-    await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
-  }
-  try {
-    await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o infer-out-vscode/file-within-project-raw -- javac -cp infer-out-vscode/classes:${classesFolder}:build/libs:$CLASSPATH -d infer-out-vscode/classes ${sourceFilePath}`);
-  } catch (err) {
-    vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/file-within-project-raw`), {recursive: true});
-    console.log(err);
-    vscode.window.showErrorMessage("Single file execution not supported for this file.");
-    return false;
-  }
-
-  removeSignificantlyChangedMethods();
-
-  return await readRawInferOutput("infer-out-vscode/file-within-project-raw", true);
-}
-
-async function runInferOnCurrentFile() {
-  resetSignificantlyChangedMethods();
-  const sourceFilePath = activeTextEditor.document.fileName;
-
-  if (!sourceFilePath.endsWith(".java")) {
-    vscode.window.showInformationMessage('Infer can only be executed on Java files.');
-    return false;
-  }
-
-  const currentWorkspaceFolder = getCurrentWorkspaceFolder();
-  const inferOutRawFolder = `infer-out-vscode/file-${getSourceFileName(activeTextEditor)}-raw`;
-  try {
-    await exec(`infer --cost-only -o ${currentWorkspaceFolder}/${inferOutRawFolder} -- javac ${sourceFilePath}`);
+    if (classesFolder) {
+      try {
+        await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
+      } catch (err) {
+        await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
+      }
+      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o ${inferOutRawFolder} -- javac -cp infer-out-vscode/classes:${classesFolder}:build/libs:$CLASSPATH -d infer-out-vscode/classes ${sourceFilePath}`);
+    } else {
+      await exec(`infer --cost-only -o ${currentWorkspaceFolder}/${inferOutRawFolder} -- javac ${sourceFilePath}`);
+    }
   } catch (err) {
     vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutRawFolder}`), {recursive: true});
     console.log(err);
-    vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
+    if (classesFolder) {
+      vscode.window.showErrorMessage("Single file execution not supported for this file.");
+    } else {
+      vscode.window.showErrorMessage("Execution of Infer failed (possibly due to compilation error)");
+    }
     return false;
   }
 
-  return await readRawInferOutput(inferOutRawFolder);
+  if (classesFolder) {
+    removeSignificantlyChangedMethods();
+    return await readRawInferOutput(inferOutRawFolder, true);
+  } else {
+    resetSignificantlyChangedMethods();
+    return await readRawInferOutput(inferOutRawFolder);
+  }
 }
 
 async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinProject?: boolean) {
@@ -236,7 +230,7 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
     // }
     let inferCostRaw = JSON.parse(inferCostRawJsonString);
 
-    if (inferCost.length === 0) {
+    if (inferCostRaw.length === 0) {
       vscode.window.showErrorMessage("The costs-report from Infer is empty.");
       return false;
     }

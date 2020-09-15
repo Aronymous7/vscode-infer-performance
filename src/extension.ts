@@ -74,6 +74,8 @@ export function activate(context: vscode.ExtensionContext) {
     if (isExtensionEnabled && executionMode === ExecutionMode.Project) {
       vscode.window.showInformationMessage("Infer is already enabled for current project (use re-execution command to re-execute)");
       return;
+    } else if (isExtensionEnabled && executionMode === ExecutionMode.File) {
+      disableInfer();
     }
     executionMode = ExecutionMode.Project;
 
@@ -114,6 +116,8 @@ export function activate(context: vscode.ExtensionContext) {
     if (isExtensionEnabled && executionMode === ExecutionMode.File) {
       vscode.window.showInformationMessage("Infer is already enabled for current file (use re-execution command to re-execute)");
       return;
+    } else if (isExtensionEnabled && executionMode === ExecutionMode.Project) {
+      disableInfer();
     }
     executionMode = ExecutionMode.File;
 
