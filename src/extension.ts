@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ExecutionMode, EnableMode } from './types';
-import { validateBuildCommand, isInferInstalled } from './validators';
+import { validateBuildCommand, isInferInstalled, validateClassesFolder } from './validators';
 import {
   inferCosts,
   executeInfer,
@@ -56,10 +56,10 @@ export function activate(context: vscode.ExtensionContext) {
     let classesFolder: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('classesFolder');
     if (!classesFolder) {
       classesFolder = (await vscode.window.showInputBox({ prompt: 'Specify the root package folder containing the compiled files.', placeHolder: "e.g. target/classes, build/classes/main, etc.", ignoreFocusOut: true }))?.trim();
-      if (classesFolder) {
+      if (classesFolder && validateClassesFolder(classesFolder)) {
         vscode.workspace.getConfiguration('infer-for-vscode').update('classesFolder', classesFolder, true);
       } else {
-        vscode.window.showInformationMessage("No folder entered.");
+        vscode.window.showErrorMessage("Invalid path entered. Please give the relative path from your project root.");
         return;
       }
     }

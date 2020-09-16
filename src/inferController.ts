@@ -191,6 +191,12 @@ async function runInferOnCurrentFile(classesFolder?: string) {
   try {
     if (classesFolder) {
       try {
+        await fs.promises.access(`${currentWorkspaceFolder}/${classesFolder}`);
+      } catch {
+        vscode.window.showErrorMessage("Given folder for compiled files couldn't be found.");
+        return false;
+      }
+      try {
         await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
       } catch (err) {
         await fs.promises.mkdir(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
