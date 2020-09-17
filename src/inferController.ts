@@ -4,9 +4,9 @@ import { executionMode } from './extension';
 import {
   nonConstantMethods,
   resetNonConstantMethods,
-  removeNonConstantMethods,
+  resetNonConstantMethodsForFile,
   resetSignificantlyChangedMethods,
-  removeSignificantlyChangedMethods
+  resetSignificantlyChangedMethodsForFile
 } from './javaCodeHandler';
 import {
   costDegreeDecorationTypes,
@@ -213,7 +213,7 @@ async function runInferOnCurrentFile(classesFolder?: string) {
   }
 
   if (classesFolder) {
-    removeSignificantlyChangedMethods();
+    resetSignificantlyChangedMethodsForFile();
     return await readRawInferOutput(inferOutRawFolder, true);
   } else {
     resetSignificantlyChangedMethods();
@@ -238,7 +238,7 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
     }
 
     if (isSingleFileWithinProject) {
-      removeNonConstantMethods();
+      resetNonConstantMethodsForFile();
     } else {
       resetNonConstantMethods();
     }
@@ -247,7 +247,7 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
       if (inferCostRawItem.procedure_name === "<init>") {
         continue;
       }
-      if (+inferCostRawItem.exec_cost.hum.hum_degree !== 0) {
+      if (+inferCostRawItem.exec_cost.hum.hum_degree !== 0 && !nonConstantMethods.includes(inferCostRawItem.procedure_name)) {
         nonConstantMethods.push(inferCostRawItem.procedure_name);
       }
       inferCost.push({

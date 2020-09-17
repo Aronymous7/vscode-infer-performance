@@ -80,7 +80,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         return codeLens;
       }
       codeLens.command = {
-        title: `Execution cost${significantlyChangedMethods.includes(currentInferCostItem.method_name) ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
+        title: `Execution cost${significantlyChangedMethods.get(this.document.fileName)?.includes(currentInferCostItem.method_name) ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
         command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };
