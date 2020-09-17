@@ -6,6 +6,7 @@ import {
   significantlyChangedMethods,
   onSignificantCodeChange
 } from '../javaCodeHandler';
+import { currentInferCost } from '../inferController';
 
 export class DetailCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
@@ -63,13 +64,14 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         }
       }
       let currentInferCostItem: InferCostItem | undefined;
+      let tempOccurenceIndex = occurenceIndex;
       for (let inferCostItem of this.inferCost) {
         if (inferCostItem.method_name === thisMethodDeclaration.name) {
-          if (occurenceIndex === 0) {
+          if (tempOccurenceIndex === 0) {
             currentInferCostItem = inferCostItem;
             break;
           }
-          occurenceIndex--;
+          tempOccurenceIndex--;
         }
       }
       if (!currentInferCostItem) {
@@ -80,7 +82,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         return codeLens;
       }
       codeLens.command = {
-        title: `Execution cost${significantlyChangedMethods.get(this.document.fileName)?.includes(currentInferCostItem.method_name) ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
+        title: `Execution cost${significantlyChangedMethods.get(this.document.fileName)?.includes(`${currentInferCostItem.method_name}:${occurenceIndex}`) ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
         command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };

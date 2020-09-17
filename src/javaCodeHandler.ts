@@ -73,15 +73,16 @@ export function significantCodeChangeCheck(savedText: string) {
       let matches = diffTextPartValueWithoutDeclarations.match(significantCodeChangeRegex);
       if (matches) {
         let containingMethod = "";
-        for (let i = +diffTextPartIndex - 1; i >= 0; i--){
+        let containingMethodOccurences = new Map<string, number>();
+        for (let i = 0; i < +diffTextPartIndex; i++){
           let prevDiffTextPart = diffText[i];
           const regex = new RegExp(methodDeclarationRegex);
           let declarationMatches: RegExpExecArray | null;
           while ((declarationMatches = regex.exec(prevDiffTextPart.value)) !== null) {
-            containingMethod = declarationMatches[1];
-          }
-          if (containingMethod !== "") {
-            break;
+            let occurenceIndex = containingMethodOccurences.get(declarationMatches[1]);
+            occurenceIndex = occurenceIndex ? occurenceIndex : 0;
+            containingMethodOccurences.set(declarationMatches[1], occurenceIndex + 1);
+            containingMethod = `${declarationMatches[1]}:${occurenceIndex}`;
           }
         }
         for (const match of matches) {
@@ -89,7 +90,10 @@ export function significantCodeChangeCheck(savedText: string) {
           const regex = new RegExp(methodDeclarationRegex);
           let declarationMatches: RegExpExecArray | null;
           while ((declarationMatches = regex.exec(diffTextPartValueBeforeMatch)) !== null) {
-            containingMethod = declarationMatches[1];
+            let occurenceIndex = containingMethodOccurences.get(declarationMatches[1]);
+            occurenceIndex = occurenceIndex ? occurenceIndex : 0;
+            containingMethodOccurences.set(declarationMatches[1], occurenceIndex + 1);
+            containingMethod = `${declarationMatches[1]}:${occurenceIndex}`;
           }
           let methodName = match.split("(")[0].trim();
           if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(methodName) &&
