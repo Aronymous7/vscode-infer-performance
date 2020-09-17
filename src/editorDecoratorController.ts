@@ -46,29 +46,36 @@ export function createEditorDecorators() {
   for (let i = 0; i < costDegreeDecorationTypesLength; i++) {
     costDegreeDecorations.push([]);
   }
+  let methodNameOccurences = new Map<string, number>();
   for (let inferCostItem of currentInferCost) {
-    methodDeclarations.some(methodDeclaration => {
+    let occurenceIndex = methodNameOccurences.get(inferCostItem.method_name);
+    occurenceIndex = occurenceIndex ? occurenceIndex : 0;
+    methodNameOccurences.set(inferCostItem.method_name, occurenceIndex + 1);
+    for (const methodDeclaration of methodDeclarations) {
       if (inferCostItem.method_name === methodDeclaration.name) {
-        const declarationDecoration = { range: methodDeclaration.declarationRange };
-        const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.polynomial} ~~ ${inferCostItem.exec_cost.big_o}` };
+        if (occurenceIndex === 0) {
+          const declarationDecoration = { range: methodDeclaration.declarationRange };
+          const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: `Execution cost: ${inferCostItem.exec_cost.polynomial} ~~ ${inferCostItem.exec_cost.big_o}` };
 
-        const costDegreeIndex = ((inferCostItem.exec_cost.degree !== null) && (inferCostItem.exec_cost.degree < costDegreeDecorationTypesLength)) ?
-            inferCostItem.exec_cost.degree : costDegreeDecorationTypesLength - 1;
-        costDegreeDecorations[costDegreeIndex].push(nameDecoration);
+          const costDegreeIndex = ((inferCostItem.exec_cost.degree !== null) && (inferCostItem.exec_cost.degree < costDegreeDecorationTypesLength)) ?
+              inferCostItem.exec_cost.degree : costDegreeDecorationTypesLength - 1;
+          costDegreeDecorations[costDegreeIndex].push(nameDecoration);
 
-        const newCostChangeDecorationType = significantCostChangeDecorationType(inferCostItem);
-        const oldCostChangeDecorationType = costChangeDecorationTypes.get(inferCostItem.id);
-        if (newCostChangeDecorationType) {
-          oldCostChangeDecorationType?.dispose();
-          costChangeDecorationTypes.set(inferCostItem.id, newCostChangeDecorationType);
-          activeTextEditor.setDecorations(newCostChangeDecorationType, new Array(declarationDecoration));
-        } else if (oldCostChangeDecorationType) {
-          activeTextEditor.setDecorations(oldCostChangeDecorationType, new Array(declarationDecoration));
+          const newCostChangeDecorationType = significantCostChangeDecorationType(inferCostItem);
+          const oldCostChangeDecorationType = costChangeDecorationTypes.get(inferCostItem.id);
+          if (newCostChangeDecorationType) {
+            oldCostChangeDecorationType?.dispose();
+            costChangeDecorationTypes.set(inferCostItem.id, newCostChangeDecorationType);
+            activeTextEditor.setDecorations(newCostChangeDecorationType, new Array(declarationDecoration));
+          } else if (oldCostChangeDecorationType) {
+            activeTextEditor.setDecorations(oldCostChangeDecorationType, new Array(declarationDecoration));
+          }
+
+          break;
         }
-
-        return true;
+        occurenceIndex--;
       }
-    });
+    }
   }
   for (let i = 0; i < costDegreeDecorationTypesLength; i++) {
     activeTextEditor.setDecorations(costDegreeDecorationTypes[i], costDegreeDecorations[i]);

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { InferCostItem, ExecutionMode, EnableMode } from './types';
-import { executionMode, isExtensionEnabled } from './extension';
+import { executionMode } from './extension';
 import {
   nonConstantMethods,
   resetNonConstantMethods,
@@ -59,11 +59,6 @@ export function getCurrentWorkspaceFolder() {
 }
 
 export async function executeInfer(classesFolder?: string) {
-  if (executionMode === ExecutionMode.Project && !classesFolder) {
-    savedDocumentTexts = new Map<string, string>();
-  }
-  updateSavedDocumentText(activeTextEditor);
-
   if (executionMode === ExecutionMode.Project) {
     if (!classesFolder) {
       const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
@@ -72,6 +67,7 @@ export async function executeInfer(classesFolder?: string) {
         return false;
       }
       if (!await runInferOnProject(buildCommand)) { return false; }
+      savedDocumentTexts = new Map<string, string>();
       disposeCodeLensProviders();
     } else {
       if (!await runInferOnCurrentFile(classesFolder)) { return false; }
@@ -80,6 +76,7 @@ export async function executeInfer(classesFolder?: string) {
     if (!await runInferOnCurrentFile()) { return false; }
   } else { return false; }
 
+  updateSavedDocumentText(activeTextEditor);
   createInferAnnotations();
 
   vscode.window.showInformationMessage("Executed Infer.");
@@ -115,14 +112,13 @@ export async function enableInfer(enableMode: EnableMode, buildCommand?: string)
 }
 
 export async function readInferOut() {
-  savedDocumentTexts = new Map<string, string>();
-  updateSavedDocumentText(activeTextEditor);
-
   if (!await readRawInferOutput("infer-out")) {
     vscode.window.showErrorMessage("infer-out folder not found in project root.");
     return false;
   }
 
+  savedDocumentTexts = new Map<string, string>();
+  updateSavedDocumentText(activeTextEditor);
   resetSignificantlyChangedMethods();
   disposeCodeLensProviders();
   createInferAnnotations();

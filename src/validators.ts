@@ -6,7 +6,7 @@ export function validateBuildCommand(buildCommand: string) {
 }
 
 export function validateClassesFolder(classesFolder: string) {
-  return /^(\w+|\.{1,2})(\/\w+)*\/?$/gm.test(classesFolder);
+  return /^([-\w]+|\.{1,2})(\/\w+)*\/?$/gm.test(classesFolder);
 }
 
 export async function isInferInstalled() {

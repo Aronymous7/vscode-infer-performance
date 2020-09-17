@@ -95,7 +95,7 @@
           "description": "The root package folder containing the compiled files from the project build. Required for single file execution within project.",
           "examples": ["target/classes", "build/classes/main"],
           "minLength": 1,
-          "pattern": "^(\\w+|\\.{1,2})(\\/\\w+)*\\/?$"
+          "pattern": "^([-\\w]+|\\.{1,2})(\\/\\w+)*\\/?$"
         }
       }
     }

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { InferCostItem } from '../types';
+import { InferCostItem, MethodDeclaration } from '../types';
 import { isExtensionEnabled } from '../extension';
 import {
   findMethodDeclarations,
@@ -40,18 +40,36 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
     if (isExtensionEnabled) {
       if (!this.document) { return; }
       const methodDeclarations = findMethodDeclarations(this.document);
-      let methodName = "";
+      let thisMethodDeclaration: MethodDeclaration | undefined;
       methodDeclarations.some(methodDeclaration => {
         if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
-          methodName = methodDeclaration.name;
+          thisMethodDeclaration = methodDeclaration;
           return true;
         }
       });
+      if (!thisMethodDeclaration) {
+        codeLens.command = {
+          title: "No performance data available for this method.",
+          command: "infer-for-vscode.detailCodelensError"
+        };
+        return codeLens;
+      }
+      let occurenceIndex = 0;
+      for (const methodDeclaration of methodDeclarations) {
+        if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
+          break;
+        } else if (thisMethodDeclaration.name === methodDeclaration.name) {
+          occurenceIndex++;
+        }
+      }
       let currentInferCostItem: InferCostItem | undefined;
       for (let inferCostItem of this.inferCost) {
-        if (inferCostItem.method_name === methodName) {
-          currentInferCostItem = inferCostItem;
-          break;
+        if (inferCostItem.method_name === thisMethodDeclaration.name) {
+          if (occurenceIndex === 0) {
+            currentInferCostItem = inferCostItem;
+            break;
+          }
+          occurenceIndex--;
         }
       }
       if (!currentInferCostItem) {
