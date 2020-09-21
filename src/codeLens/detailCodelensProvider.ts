@@ -6,7 +6,7 @@ import {
   significantlyChangedMethods,
   onSignificantCodeChange
 } from '../javaCodeHandler';
-import { currentInferCost } from '../inferController';
+import { currentInferCost, activeTextEditor } from '../inferController';
 
 export class DetailCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
@@ -81,8 +81,18 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         };
         return codeLens;
       }
+      let isSignificantlyChangedMethod = false;
+      const fileSignificantlyChangedMethods = significantlyChangedMethods.get(this.document.fileName);
+      if (fileSignificantlyChangedMethods) {
+        for (const containingMethod of fileSignificantlyChangedMethods) {
+          if (containingMethod[0] === `${currentInferCostItem.method_name}:${occurenceIndex}`) {
+            isSignificantlyChangedMethod = true;
+            break;
+          }
+        }
+      }
       codeLens.command = {
-        title: `Execution cost${significantlyChangedMethods.get(this.document.fileName)?.includes(`${currentInferCostItem.method_name}:${occurenceIndex}`) ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
+        title: `Execution cost${isSignificantlyChangedMethod ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
         command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };

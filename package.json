@@ -88,7 +88,7 @@
           "type": "string",
           "description": "The build command to be used by Infer for compiling your project. Currently supported build tools: javac, maven, gradle",
           "examples": ["mvn compile", "./gradlew build"],
-          "pattern": "^(javac|mvn|gradle|\\.\\/gradlew).*"
+          "pattern": "^(javac|mvn|gradle|\\.\\/gradlew) .*"
         },
         "infer-for-vscode.classesFolder": {
           "type": "string",

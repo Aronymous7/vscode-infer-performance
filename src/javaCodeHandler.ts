@@ -5,7 +5,7 @@ import { activeTextEditor, savedDocumentTexts, inferCosts, currentInferCost } fr
 const Diff = require('diff');
 
 export let nonConstantMethods: string[] = [];
-export let significantlyChangedMethods = new Map<string, string[]>();   // [document.fileName, methodNames]
+export let significantlyChangedMethods = new Map<string, Map<string, string[]>>();   // [document.fileName, [methodName, causeMethodNames]]
 
 const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange.event;
@@ -14,10 +14,10 @@ const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|f
 let significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
 
 export function resetSignificantlyChangedMethods() {
-  significantlyChangedMethods = new Map<string, string[]>();
+  significantlyChangedMethods = new Map<string, Map<string, string[]>>();
 }
 export function resetSignificantlyChangedMethodsForFile() {
-  significantlyChangedMethods.set(activeTextEditor.document.fileName, []);
+  significantlyChangedMethods.set(activeTextEditor.document.fileName, new Map<string, string[]>());
 }
 
 export function resetNonConstantMethods() {
@@ -60,11 +60,9 @@ export function significantCodeChangeCheck(savedText: string) {
   const previousText = savedDocumentTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
 
-  let fileSignificantlyChangedMethods = significantlyChangedMethods.get(activeTextEditor.document.fileName);
-  fileSignificantlyChangedMethods = fileSignificantlyChangedMethods ? fileSignificantlyChangedMethods : [];
+  let containingAndCauseMethods = new Map<string, string[]>();
   const methodWhitelist: string[] = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
-  let containingMethods: string[] = [];
   let isSignificant = false;
   for (let diffTextPartIndex in diffText) {
     let diffTextPart = diffText[diffTextPartIndex];
@@ -96,13 +94,15 @@ export function significantCodeChangeCheck(savedText: string) {
             containingMethod = `${declarationMatches[1]}:${occurenceIndex}`;
           }
           let methodName = match.split("(")[0].trim();
-          if (!containingMethods.includes(containingMethod) && !methodWhitelist.includes(methodName) &&
-              (nonConstantMethods.includes(methodName) || ["while", "for"].includes(methodName))) {
-            if (!fileSignificantlyChangedMethods.includes(containingMethod)) {
-              fileSignificantlyChangedMethods.push(containingMethod);
-            }
-            if (containingMethod !== "") {
-              containingMethods.push(containingMethod);
+          if (!methodWhitelist.includes(methodName) && (nonConstantMethods.includes(methodName) || ["while", "for"].includes(methodName))) {
+            let causeMethods = containingAndCauseMethods.get(containingMethod);
+            if (causeMethods) {
+              if (!causeMethods.includes(match)) {
+                causeMethods.push(match);
+                containingAndCauseMethods.set(containingMethod, causeMethods);
+              }
+            } else {
+              containingAndCauseMethods.set(containingMethod, [match]);
             }
             isSignificant = true;
           }
@@ -110,17 +110,8 @@ export function significantCodeChangeCheck(savedText: string) {
       }
     }
   }
-  const revertedMethods = fileSignificantlyChangedMethods.filter(method => !containingMethods.includes(method));
-  for (const method of revertedMethods) {
-    const methodIndex = fileSignificantlyChangedMethods.indexOf(method);
-    fileSignificantlyChangedMethods.splice(methodIndex, 1);
-  }
-  if (fileSignificantlyChangedMethods.length > 0) {
-    significantlyChangedMethods.set(activeTextEditor.document.fileName, fileSignificantlyChangedMethods);
-  }
-  if (isSignificant || revertedMethods.length > 0) {
-    significantCodeChange.fire();
-  }
+  significantlyChangedMethods.set(activeTextEditor.document.fileName, containingAndCauseMethods);
+  significantCodeChange.fire();
   return isSignificant;
 }
 
