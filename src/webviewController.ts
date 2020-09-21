@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { currentInferCost, inferCostHistories } from './inferController';
+import { currentInferCost, inferCostHistories, activeTextEditor } from './inferController';
+import { significantlyChangedMethods } from './javaCodeHandler';
 
 const cssStyling = `ul, h3 {
   margin: 0;
@@ -91,6 +92,27 @@ export function createWebviewHistory(methodKey: string) {
 
   const costHistory = inferCostHistories.get(methodKey);
   if (!costHistory || costHistory.length <= 0) { return; }
+
+  let significantlyChangedString = "";
+  let fileSignificantlyChangedMethods = significantlyChangedMethods.get(activeTextEditor.document.fileName);
+  if (fileSignificantlyChangedMethods) {
+    for (const significantlyChangedMethod of fileSignificantlyChangedMethods) {
+      if (`${costHistory[0].method_name}:0` === significantlyChangedMethod[0]) {
+        let causeMethodsString = "";
+        for (const causeMethod of significantlyChangedMethod[1]) {
+          causeMethodsString += `<li>${causeMethod}</li>`;
+        }
+        significantlyChangedString = `<div>
+    <strong>Might have significantly changed!</strong> Potential causes (additions or removals):
+    <ul>
+      ${causeMethodsString}
+    </ul>
+  </div>`;
+        break;
+      }
+    }
+  }
+
   let inferCostHistoryHtmlString = ``;
   for (let costHistoryItem of costHistory) {
     inferCostHistoryHtmlString += `<div>
@@ -109,6 +131,7 @@ export function createWebviewHistory(methodKey: string) {
       <li>${costHistoryItem.alloc_cost.big_o}</li>
     </ul>
   </div>
+  ${significantlyChangedString}
 </div>
 <hr>`;
   }
