@@ -1,24 +1,22 @@
 import * as vscode from 'vscode';
 import { MethodDeclaration, LineDiff } from './types';
-import { activeTextEditor, savedDocumentTexts, inferCosts, currentInferCost } from './inferController';
+import {
+  activeTextEditor,
+  savedDocumentTexts,
+  inferCosts,
+  currentInferCost,
+  inferCostHistories
+} from './inferController';
 
 const Diff = require('diff');
 
 export let nonConstantMethods: string[] = [];
-export let significantlyChangedMethods = new Map<string, Map<string, string[]>>();   // [document.fileName, [methodName:occurenceIndex, causeMethodNames]]
 
 const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange.event;
 
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|(public|protected|private|return) [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\)/gm);
 let significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
-
-export function resetSignificantlyChangedMethods() {
-  significantlyChangedMethods = new Map<string, Map<string, string[]>>();
-}
-export function resetSignificantlyChangedMethodsForFile() {
-  significantlyChangedMethods.set(activeTextEditor.document.fileName, new Map<string, string[]>());
-}
 
 export function resetNonConstantMethods() {
   nonConstantMethods = [];
@@ -110,7 +108,23 @@ export function significantCodeChangeCheck(savedText: string) {
       }
     }
   }
-  significantlyChangedMethods.set(activeTextEditor.document.fileName, containingAndCauseMethods);
+
+  let occurenceIndices = new Map<string, number>();
+  for (const inferCostItem of currentInferCost) {
+    let occurenceIndex = occurenceIndices.get(inferCostItem.method_name);
+    occurenceIndex = occurenceIndex ? occurenceIndex : 0;
+    occurenceIndices.set(inferCostItem.method_name, occurenceIndex + 1);
+
+    let causeMethods = containingAndCauseMethods.get(`${inferCostItem.method_name}:${occurenceIndex}`);
+    inferCostItem.changeCauseMethods = causeMethods;
+    let inferCostHistoryItem = inferCostHistories.get(inferCostItem.id);
+    if (inferCostHistoryItem) {
+      inferCostHistoryItem[0].changeCauseMethods = causeMethods;
+      inferCostHistories.set(inferCostHistoryItem[0].id, inferCostHistoryItem);
+    }
+  }
+  inferCosts.set(activeTextEditor.document.fileName, currentInferCost);
+
   significantCodeChange.fire();
   return isSignificant;
 }

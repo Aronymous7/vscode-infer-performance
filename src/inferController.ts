@@ -4,9 +4,7 @@ import { executionMode } from './extension';
 import {
   nonConstantMethods,
   resetNonConstantMethods,
-  resetNonConstantMethodsForFile,
-  resetSignificantlyChangedMethods,
-  resetSignificantlyChangedMethodsForFile
+  resetNonConstantMethodsForFile
 } from './javaCodeHandler';
 import {
   costDegreeDecorationTypes,
@@ -119,7 +117,6 @@ export async function readInferOut() {
 
   savedDocumentTexts = new Map<string, string>();
   updateSavedDocumentText(activeTextEditor);
-  resetSignificantlyChangedMethods();
   disposeCodeLensProviders();
   createInferAnnotations();
 
@@ -143,7 +140,6 @@ export function disableInfer() {
   disposeCodeLensProviders();
   disposeWebviews();
   resetNonConstantMethods();
-  resetSignificantlyChangedMethods();
   inferCosts = new Map<string, InferCostItem[]>();
   savedDocumentTexts = new Map<string, string>();
 }
@@ -167,8 +163,6 @@ async function runInferOnProject(buildCommand: string) {
     await fs.promises.access(`${currentWorkspaceFolder}/infer-out-vscode/classes`);
     vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/infer-out-vscode/classes`), {recursive: true});
   } catch (err) {}
-
-  resetSignificantlyChangedMethods();
 
   return await readRawInferOutput("infer-out-vscode/project-raw");
 }
@@ -213,10 +207,8 @@ async function runInferOnCurrentFile(classesFolder?: string) {
   }
 
   if (classesFolder) {
-    resetSignificantlyChangedMethodsForFile();
     return await readRawInferOutput(inferOutRawFolder, true);
   } else {
-    resetSignificantlyChangedMethods();
     return await readRawInferOutput(inferOutRawFolder);
   }
 }
@@ -227,9 +219,6 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
   let inferCost: InferCostItem[] = [];
   try {
     const inferCostRawJsonString = await fs.promises.readFile(`${currentWorkspaceFolder}/${inferOutRawFolder}/costs-report.json`);
-    // if (inferOutRawFolder !== "infer-out") {
-    //   vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutRawFolder}`), {recursive: true});
-    // }
     let inferCostRaw = JSON.parse(inferCostRawJsonString);
 
     if (inferCostRaw.length === 0) {

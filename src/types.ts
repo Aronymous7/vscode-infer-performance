@@ -29,6 +29,7 @@ export interface InferCostItem {
     readonly degree: number;
     readonly big_o: string;
   };
+  changeCauseMethods?: string[];
 }
 
 export interface MethodDeclaration {

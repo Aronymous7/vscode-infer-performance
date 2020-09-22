@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { currentInferCost, inferCostHistories, activeTextEditor } from './inferController';
-import { significantlyChangedMethods } from './javaCodeHandler';
 
 const cssStyling = `ul, h3 {
   margin: 0;
@@ -96,33 +95,18 @@ export function createWebviewHistory(methodKey: string) {
   const costHistory = inferCostHistories.get(methodKey);
   if (!costHistory || costHistory.length <= 0) { return; }
 
-  let occurenceIndex = 0;
-  for (const inferCostItem of currentInferCost) {
-    if (costHistory[0].method_name === inferCostItem.method_name && costHistory[0].id !== inferCostItem.id) {
-      occurenceIndex++;
-    } else if (costHistory[0].id === inferCostItem.id) {
-      break;
-    }
-  }
-
   let significantlyChangedString = "";
-  let fileSignificantlyChangedMethods = significantlyChangedMethods.get(activeTextEditor.document.fileName);
-  if (fileSignificantlyChangedMethods) {
-    for (const significantlyChangedMethod of fileSignificantlyChangedMethods) {
-      if (`${costHistory[0].method_name}:${occurenceIndex}` === significantlyChangedMethod[0]) {
-        let causeMethodsString = "";
-        for (const causeMethod of significantlyChangedMethod[1]) {
-          causeMethodsString += `<li>${causeMethod}</li>`;
-        }
-        significantlyChangedString = `<div>
+  if (costHistory[0].changeCauseMethods) {
+    let causeMethodsString = "";
+    for (const causeMethod of costHistory[0].changeCauseMethods) {
+      causeMethodsString += `<li>${causeMethod}</li>`;
+    }
+    significantlyChangedString = `<div>
     <strong>Cost might have changed significantly!</strong> Potential causes (additions or removals):
     <ul>
       ${causeMethodsString}
     </ul>
   </div>`;
-        break;
-      }
-    }
   }
 
   let inferCostHistoryHtmlString = ``;
@@ -143,7 +127,7 @@ export function createWebviewHistory(methodKey: string) {
       <li>${costHistoryItem.alloc_cost.big_o}</li>
     </ul>
   </div>
-  ${significantlyChangedString}
+  ${costHistoryItem === costHistory[0] ? significantlyChangedString : ''}
 </div>
 <hr>`;
   }

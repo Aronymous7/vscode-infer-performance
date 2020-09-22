@@ -46,11 +46,11 @@ export function createEditorDecorators() {
   for (let i = 0; i < costDegreeDecorationTypesLength; i++) {
     costDegreeDecorations.push([]);
   }
-  let methodNameOccurences = new Map<string, number>();
+  let occurenceIndices = new Map<string, number>();
   for (let inferCostItem of currentInferCost) {
-    let occurenceIndex = methodNameOccurences.get(inferCostItem.method_name);
+    let occurenceIndex = occurenceIndices.get(inferCostItem.method_name);
     occurenceIndex = occurenceIndex ? occurenceIndex : 0;
-    methodNameOccurences.set(inferCostItem.method_name, occurenceIndex + 1);
+    occurenceIndices.set(inferCostItem.method_name, occurenceIndex + 1);
     for (const methodDeclaration of methodDeclarations) {
       if (inferCostItem.method_name === methodDeclaration.name) {
         if (occurenceIndex === 0) {

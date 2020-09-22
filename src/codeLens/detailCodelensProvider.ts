@@ -3,16 +3,14 @@ import { InferCostItem, MethodDeclaration } from '../types';
 import { isExtensionEnabled } from '../extension';
 import {
   findMethodDeclarations,
-  significantlyChangedMethods,
   onSignificantCodeChange
 } from '../javaCodeHandler';
-import { currentInferCost, activeTextEditor } from '../inferController';
+import { currentInferCost } from '../inferController';
 
 export class DetailCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
 
   private document: vscode.TextDocument | undefined;
-  private inferCost: InferCostItem[];
   private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
@@ -20,8 +18,6 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
     onSignificantCodeChange(() => {
       this._onDidChangeCodeLenses.fire();
     });
-
-    this.inferCost = inferCost;
   }
 
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
@@ -65,7 +61,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
       }
       let currentInferCostItem: InferCostItem | undefined;
       let tempOccurenceIndex = occurenceIndex;
-      for (let inferCostItem of this.inferCost) {
+      for (let inferCostItem of currentInferCost) {
         if (inferCostItem.method_name === thisMethodDeclaration.name) {
           if (tempOccurenceIndex === 0) {
             currentInferCostItem = inferCostItem;
@@ -81,18 +77,8 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         };
         return codeLens;
       }
-      let isSignificantlyChangedMethod = false;
-      const fileSignificantlyChangedMethods = significantlyChangedMethods.get(this.document.fileName);
-      if (fileSignificantlyChangedMethods) {
-        for (const containingMethod of fileSignificantlyChangedMethods) {
-          if (containingMethod[0] === `${currentInferCostItem.method_name}:${occurenceIndex}`) {
-            isSignificantlyChangedMethod = true;
-            break;
-          }
-        }
-      }
       codeLens.command = {
-        title: `Execution cost${isSignificantlyChangedMethod ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
+        title: `Execution cost${currentInferCostItem.changeCauseMethods ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
         command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };
