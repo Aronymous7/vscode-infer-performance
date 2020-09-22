@@ -5,7 +5,7 @@ import { activeTextEditor, savedDocumentTexts, inferCosts, currentInferCost } fr
 const Diff = require('diff');
 
 export let nonConstantMethods: string[] = [];
-export let significantlyChangedMethods = new Map<string, Map<string, string[]>>();   // [document.fileName, [methodName, causeMethodNames]]
+export let significantlyChangedMethods = new Map<string, Map<string, string[]>>();   // [document.fileName, [methodName:occurenceIndex, causeMethodNames]]
 
 const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange.event;

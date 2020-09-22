@@ -7,6 +7,9 @@ const cssStyling = `ul, h3 {
 }
 .selected-method {
   background-color: rgba(200, 200, 0, 0.2);
+}
+strong {
+  background-color: rgba(200, 100, 0, 0.5);
 }`;
 
 let webviewOverview: vscode.WebviewPanel;
@@ -93,17 +96,26 @@ export function createWebviewHistory(methodKey: string) {
   const costHistory = inferCostHistories.get(methodKey);
   if (!costHistory || costHistory.length <= 0) { return; }
 
+  let occurenceIndex = 0;
+  for (const inferCostItem of currentInferCost) {
+    if (costHistory[0].method_name === inferCostItem.method_name && costHistory[0].id !== inferCostItem.id) {
+      occurenceIndex++;
+    } else if (costHistory[0].id === inferCostItem.id) {
+      break;
+    }
+  }
+
   let significantlyChangedString = "";
   let fileSignificantlyChangedMethods = significantlyChangedMethods.get(activeTextEditor.document.fileName);
   if (fileSignificantlyChangedMethods) {
     for (const significantlyChangedMethod of fileSignificantlyChangedMethods) {
-      if (`${costHistory[0].method_name}:0` === significantlyChangedMethod[0]) {
+      if (`${costHistory[0].method_name}:${occurenceIndex}` === significantlyChangedMethod[0]) {
         let causeMethodsString = "";
         for (const causeMethod of significantlyChangedMethod[1]) {
           causeMethodsString += `<li>${causeMethod}</li>`;
         }
         significantlyChangedString = `<div>
-    <strong>Might have significantly changed!</strong> Potential causes (additions or removals):
+    <strong>Cost might have changed significantly!</strong> Potential causes (additions or removals):
     <ul>
       ${causeMethodsString}
     </ul>
