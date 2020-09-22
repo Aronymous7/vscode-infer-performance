@@ -8,7 +8,10 @@ const cssStyling = `ul, h3 {
   background-color: rgba(200, 200, 0, 0.2);
 }
 strong {
-  background-color: rgba(200, 100, 0, 0.5);
+  font-size: 110%;
+}
+strong.first {
+  background-color: rgba(200, 100, 0, 0.3);
 }`;
 
 let webviewOverview: vscode.WebviewPanel;
@@ -95,23 +98,31 @@ export function createWebviewHistory(methodKey: string) {
   const costHistory = inferCostHistories.get(methodKey);
   if (!costHistory || costHistory.length <= 0) { return; }
 
-  let significantlyChangedString = "";
-  if (costHistory[0].changeCauseMethods) {
-    let causeMethodsString = "";
-    for (const causeMethod of costHistory[0].changeCauseMethods) {
-      causeMethodsString += `<li>${causeMethod}</li>`;
-    }
-    significantlyChangedString = `<div>
-    <strong>Cost might have changed significantly!</strong> Potential causes (additions or removals):
-    <ul>
-      ${causeMethodsString}
-    </ul>
-  </div>`;
-  }
-
   let inferCostHistoryHtmlString = ``;
   for (let costHistoryItem of costHistory) {
+    let changeCauseString = "";
+    if (costHistoryItem.changeCauseMethods) {
+      let causeMethodsString = "";
+      for (const causeMethod of costHistoryItem.changeCauseMethods) {
+        causeMethodsString += `<li>${causeMethod}</li>`;
+      }
+      let changeMessage = "";
+      if (costHistoryItem === costHistory[0]) {
+        changeMessage = "<strong class=\"first\">Cost might have changed significantly! Potential causes (additions or removals):</strong>";
+      } else {
+        changeMessage = "<strong>↑↑↑ Potential causes for cost change (additions or removals): ↑↑↑</strong>";
+      }
+        changeCauseString = `<div>
+  ${changeMessage}
+  <ul>
+    ${causeMethodsString}
+  </ul>
+  <hr>
+</div>`;
+    }
+
     inferCostHistoryHtmlString += `<div>
+  ${changeCauseString}
   <h2>${costHistoryItem.timestamp + (costHistoryItem === costHistory[0] ? ' (most recent)' : '')}</h2>
   <div>
     <h3>Execution cost:</h3>
@@ -127,7 +138,6 @@ export function createWebviewHistory(methodKey: string) {
       <li>${costHistoryItem.alloc_cost.big_o}</li>
     </ul>
   </div>
-  ${costHistoryItem === costHistory[0] ? significantlyChangedString : ''}
 </div>
 <hr>`;
   }
