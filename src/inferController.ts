@@ -239,9 +239,17 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
       if (+inferCostRawItem.exec_cost.hum.hum_degree !== 0 && !nonConstantMethods.includes(inferCostRawItem.procedure_name)) {
         nonConstantMethods.push(inferCostRawItem.procedure_name);
       }
+      let parameterTypes = inferCostRawItem.procedure_id.split("(")[1].split(")")[0].split(",");
+      if (parameterTypes[0] === "") {
+        parameterTypes = [];
+      }
+      for (let i in parameterTypes) {
+        parameterTypes[i] = parameterTypes[i].split(".").pop();
+      }
       inferCost.push({
         id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
+        parameters: parameterTypes,
         loc: {
           file: executionMode === ExecutionMode.Project ? `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}` : activeTextEditor.document.fileName,
           lnum: inferCostRawItem.loc.lnum

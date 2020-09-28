@@ -49,6 +49,9 @@ export function findMethodDeclarations(document: vscode.TextDocument) {
     const nameRange = new vscode.Range(nameStartPosition, nameEndPosition);
 
     let parameterTypes = matches[0].split("(")[1].split(")")[0].split(",");
+    if (parameterTypes[0] === "") {
+      parameterTypes = [];
+    }
     for (const i in parameterTypes) {
       const parameterParts = parameterTypes[i].trim().split(" ");
       let parameterType = parameterParts[0].split("<")[0];

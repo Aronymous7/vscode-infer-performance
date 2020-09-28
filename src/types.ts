@@ -14,6 +14,7 @@ export enum EnableMode {
 export interface InferCostItem {
   readonly id: string;
   readonly method_name: string;
+  readonly parameters: string[];
   timestamp?: string;       // used for cost history
   readonly loc: {
     readonly file: string;  // absolute path
