@@ -34,6 +34,7 @@ export interface InferCostItem {
 
 export interface MethodDeclaration {
   readonly name: string;
+  readonly parameters: string[];
   readonly declarationRange: vscode.Range;
   readonly nameRange: vscode.Range;
 }

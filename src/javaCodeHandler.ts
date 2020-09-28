@@ -15,7 +15,7 @@ export let nonConstantMethods: string[] = [];
 const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange.event;
 
-const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+[\w\<\>\[\]]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|(public|protected|private|return) [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\)/gm);
+const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+(?:\<.*\>\s+)?[\w\<\>\[\]\?]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|(?:public|protected|private|return) [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\)/gm);
 let significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
 
 export function resetNonConstantMethods() {
@@ -47,8 +47,19 @@ export function findMethodDeclarations(document: vscode.TextDocument) {
     const nameStartPosition = new vscode.Position(line.lineNumber, nameIndexOf);
     const nameEndPosition = new vscode.Position(line.lineNumber, nameIndexOf + matches[1].length);
     const nameRange = new vscode.Range(nameStartPosition, nameEndPosition);
+
+    let parameterTypes = matches[0].split("(")[1].split(")")[0].split(",");
+    for (const i in parameterTypes) {
+      const parameterParts = parameterTypes[i].trim().split(" ");
+      let parameterType = parameterParts[0].split("<")[0];
+      for (let i = 1; parameterType.match(/(public|protected|private|static|final|native|synchronized|abstract|transient)/); i++) {
+        parameterType = parameterParts[i].split("<")[0];
+      }
+      parameterTypes[i] = parameterType;
+    }
+
     if (declarationRange && nameRange) {
-      methodDeclarations.push({ name: matches[1], declarationRange: declarationRange, nameRange: nameRange });
+      methodDeclarations.push({ name: matches[1], parameters: parameterTypes, declarationRange: declarationRange, nameRange: nameRange });
     }
   }
   return methodDeclarations;
