@@ -15,8 +15,10 @@ export let nonConstantMethods: string[] = [];
 const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange.event;
 
-const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )+(?:\<.*\>\s+)?[\w\<\>\[\]\?]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|(?:public|protected|private|return) [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\)/gm);
-let significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
+const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )*(?:\<.*\>\s+)?[\w\<\>\[\]\?]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|(?:public|protected|private|return) [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\)/gm);
+const significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
+const classRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )*class\s[A-Za-z_$][A-Za-z0-9_]*(?:\<(.*?)\>)?/gm);
+// public class SequenceFileProxyLoader<C extends Compound, B extends Blah> implements ProxySequenceReader<C> {
 
 export function resetNonConstantMethods() {
   nonConstantMethods = [];
@@ -31,10 +33,25 @@ export function resetNonConstantMethodsForFile() {
 }
 
 export function findMethodDeclarations(document: vscode.TextDocument) {
-  const regex = new RegExp(methodDeclarationRegex);
-  const text = document.getText();
-  let methodDeclarations: MethodDeclaration[] = [];
+  let regex = new RegExp(classRegex);
+  let text = document.getText();
   let matches: RegExpExecArray | null;
+  let typeExtensions = new Map<string, string>();
+  while (((matches = regex.exec(text)) !== null)) {
+    if (matches[1]) {
+      const extensions = matches[1].split(",");
+      for (const extension of extensions) {
+        const extensionParts = extension.trim().split(" ");
+        if (extensionParts.length === 3 && extensionParts[1] === "extends") {
+          typeExtensions.set(extensionParts[0], extensionParts[2]);
+        }
+      }
+    }
+  }
+
+  regex = new RegExp(methodDeclarationRegex);
+  text = document.getText();
+  let methodDeclarations: MethodDeclaration[] = [];
   while ((matches = regex.exec(text)) !== null) {
     const line = document.lineAt(document.positionAt(matches.index).line);
 
@@ -57,6 +74,12 @@ export function findMethodDeclarations(document: vscode.TextDocument) {
       let parameterType = parameterParts[0].split("<")[0];
       for (let i = 1; parameterType.match(/(public|protected|private|static|final|native|synchronized|abstract|transient)/); i++) {
         parameterType = parameterParts[i].split("<")[0];
+      }
+      for (const typeExtension of typeExtensions) {
+        parameterType = parameterType.replace("...", "[]");
+        if (parameterType.split("[")[0] === typeExtension[0]) {
+          parameterType = parameterType.replace(typeExtension[0], typeExtension[1]);
+        }
       }
       parameterTypes[i] = parameterType;
     }

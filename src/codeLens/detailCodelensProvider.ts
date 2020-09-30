@@ -51,23 +51,11 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         };
         return codeLens;
       }
-      let occurenceIndex = 0;
-      for (const methodDeclaration of methodDeclarations) {
-        if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
-          break;
-        } else if (thisMethodDeclaration.name === methodDeclaration.name) {
-          occurenceIndex++;
-        }
-      }
       let currentInferCostItem: InferCostItem | undefined;
-      let tempOccurenceIndex = occurenceIndex;
       for (let inferCostItem of currentInferCost) {
-        if (inferCostItem.method_name === thisMethodDeclaration.name) {
-          if (tempOccurenceIndex === 0) {
-            currentInferCostItem = inferCostItem;
-            break;
-          }
-          tempOccurenceIndex--;
+        if (inferCostItem.method_name === thisMethodDeclaration.name && JSON.stringify(inferCostItem.parameters) === JSON.stringify(thisMethodDeclaration.parameters)) {
+          currentInferCostItem = inferCostItem;
+          break;
         }
       }
       if (!currentInferCostItem) {
