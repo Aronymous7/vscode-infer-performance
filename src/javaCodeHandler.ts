@@ -33,24 +33,11 @@ export function resetNonConstantMethodsForFile() {
 }
 
 export function findMethodDeclarations(document: vscode.TextDocument) {
-  let regex = new RegExp(classRegex);
-  let text = document.getText();
+  const savedDocumentText = savedDocumentTexts.get(activeTextEditor.document.fileName);
+  const typeExtensions = getGenericTypeExtensions(savedDocumentText ? savedDocumentText : document.getText());
+  const regex = new RegExp(methodDeclarationRegex);
+  const text = document.getText();
   let matches: RegExpExecArray | null;
-  let typeExtensions = new Map<string, string>();
-  while (((matches = regex.exec(text)) !== null)) {
-    if (matches[1]) {
-      const extensions = matches[1].split(",");
-      for (const extension of extensions) {
-        const extensionParts = extension.trim().split(" ");
-        if (extensionParts.length === 3 && extensionParts[1] === "extends") {
-          typeExtensions.set(extensionParts[0], extensionParts[2]);
-        }
-      }
-    }
-  }
-
-  regex = new RegExp(methodDeclarationRegex);
-  text = document.getText();
   let methodDeclarations: MethodDeclaration[] = [];
   while ((matches = regex.exec(text)) !== null) {
     const line = document.lineAt(document.positionAt(matches.index).line);
@@ -65,24 +52,7 @@ export function findMethodDeclarations(document: vscode.TextDocument) {
     const nameEndPosition = new vscode.Position(line.lineNumber, nameIndexOf + matches[1].length);
     const nameRange = new vscode.Range(nameStartPosition, nameEndPosition);
 
-    let parameterTypes = matches[0].split("(")[1].split(")")[0].split(",");
-    if (parameterTypes[0] === "") {
-      parameterTypes = [];
-    }
-    for (const i in parameterTypes) {
-      const parameterParts = parameterTypes[i].trim().split(" ");
-      let parameterType = parameterParts[0].split("<")[0];
-      for (let i = 1; parameterType.match(/(public|protected|private|static|final|native|synchronized|abstract|transient)/); i++) {
-        parameterType = parameterParts[i].split("<")[0];
-      }
-      for (const typeExtension of typeExtensions) {
-        parameterType = parameterType.replace("...", "[]");
-        if (parameterType.split("[")[0] === typeExtension[0]) {
-          parameterType = parameterType.replace(typeExtension[0], typeExtension[1]);
-        }
-      }
-      parameterTypes[i] = parameterType;
-    }
+    const parameterTypes = getParameterTypesFromMethodDeclaration(matches[0], typeExtensions);
 
     if (declarationRange && nameRange) {
       methodDeclarations.push({ name: matches[1], parameters: parameterTypes, declarationRange: declarationRange, nameRange: nameRange });
@@ -95,6 +65,7 @@ export function significantCodeChangeCheck(savedText: string) {
   const previousText = savedDocumentTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
 
+  const typeExtensions = getGenericTypeExtensions(previousText);
   let containingAndCauseMethods = new Map<string, string[]>();
   const methodWhitelist: string[] = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
@@ -106,16 +77,13 @@ export function significantCodeChangeCheck(savedText: string) {
       let matches = diffTextPartValueWithoutDeclarations.match(significantCodeChangeRegex);
       if (matches) {
         let containingMethod = "";
-        let containingMethodOccurences = new Map<string, number>();
         for (let i = 0; i < +diffTextPartIndex; i++){
           let prevDiffTextPart = diffText[i];
           const regex = new RegExp(methodDeclarationRegex);
           let declarationMatches: RegExpExecArray | null;
           while ((declarationMatches = regex.exec(prevDiffTextPart.value)) !== null) {
-            let occurenceIndex = containingMethodOccurences.get(declarationMatches[1]);
-            occurenceIndex = occurenceIndex ? occurenceIndex : 0;
-            containingMethodOccurences.set(declarationMatches[1], occurenceIndex + 1);
-            containingMethod = `${declarationMatches[1]}:${occurenceIndex}`;
+            let parameterTypesString = getParameterTypesFromMethodDeclaration(declarationMatches[0], typeExtensions).join(",");
+            containingMethod = `${declarationMatches[1]}(${parameterTypesString})`;
           }
         }
         for (const match of matches) {
@@ -123,10 +91,8 @@ export function significantCodeChangeCheck(savedText: string) {
           const regex = new RegExp(methodDeclarationRegex);
           let declarationMatches: RegExpExecArray | null;
           while ((declarationMatches = regex.exec(diffTextPartValueBeforeMatch)) !== null) {
-            let occurenceIndex = containingMethodOccurences.get(declarationMatches[1]);
-            occurenceIndex = occurenceIndex ? occurenceIndex : 0;
-            containingMethodOccurences.set(declarationMatches[1], occurenceIndex + 1);
-            containingMethod = `${declarationMatches[1]}:${occurenceIndex}`;
+            let parameterTypesString = getParameterTypesFromMethodDeclaration(declarationMatches[0], typeExtensions).join(",");
+            containingMethod = `${declarationMatches[1]}(${parameterTypesString})`;
           }
           let methodName = match.split("(")[0].trim();
           if (!methodWhitelist.includes(methodName) && (nonConstantMethods.includes(methodName) || ["while", "for"].includes(methodName))) {
@@ -146,13 +112,8 @@ export function significantCodeChangeCheck(savedText: string) {
     }
   }
 
-  let occurenceIndices = new Map<string, number>();
   for (const inferCostItem of currentInferCost) {
-    let occurenceIndex = occurenceIndices.get(inferCostItem.method_name);
-    occurenceIndex = occurenceIndex ? occurenceIndex : 0;
-    occurenceIndices.set(inferCostItem.method_name, occurenceIndex + 1);
-
-    let causeMethods = containingAndCauseMethods.get(`${inferCostItem.method_name}:${occurenceIndex}`);
+    let causeMethods = containingAndCauseMethods.get(`${inferCostItem.method_name}(${inferCostItem.parameters.join(",")})`);
     inferCostItem.changeCauseMethods = causeMethods;
     let inferCostHistoryItem = inferCostHistories.get(inferCostItem.id);
     if (inferCostHistoryItem) {
@@ -164,6 +125,46 @@ export function significantCodeChangeCheck(savedText: string) {
 
   significantCodeChange.fire();
   return isSignificant;
+}
+
+function getParameterTypesFromMethodDeclaration(methodDeclaration: string, typeExtensions: Map<string, string>) {
+  let parameterTypes = methodDeclaration.split("(")[1].split(")")[0].split(",");
+  if (parameterTypes[0] === "") {
+    parameterTypes = [];
+  }
+  for (const i in parameterTypes) {
+    const parameterParts = parameterTypes[i].trim().split(" ");
+    let parameterType = parameterParts[0].split("<")[0];
+    for (let i = 1; parameterType.match(/(public|protected|private|static|final|native|synchronized|abstract|transient)/); i++) {
+      parameterType = parameterParts[i].split("<")[0];
+    }
+    for (const typeExtension of typeExtensions) {
+      parameterType = parameterType.replace("...", "[]");
+      if (parameterType.split("[")[0] === typeExtension[0]) {
+        parameterType = parameterType.replace(typeExtension[0], typeExtension[1]);
+      }
+    }
+    parameterTypes[i] = parameterType;
+  }
+  return parameterTypes;
+}
+
+function getGenericTypeExtensions(documentText: string) {
+  const regex = new RegExp(classRegex);
+  let matches: RegExpExecArray | null;
+  let typeExtensions = new Map<string, string>();
+  while (((matches = regex.exec(documentText)) !== null)) {
+    if (matches[1]) {
+      const extensions = matches[1].split(",");
+      for (const extension of extensions) {
+        const extensionParts = extension.trim().split(" ");
+        if (extensionParts.length === 3 && extensionParts[1] === "extends") {
+          typeExtensions.set(extensionParts[0], extensionParts[2]);
+        }
+      }
+    }
+  }
+  return typeExtensions;
 }
 
 export function addMethodToWhitelist(methodName: string) {
