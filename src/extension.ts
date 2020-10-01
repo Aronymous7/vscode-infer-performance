@@ -222,8 +222,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string) => {
-    createWebviewOverview(selectedMethodName);
+  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string, selectedMethodParameters: string[]) => {
+    createWebviewOverview(selectedMethodName, selectedMethodParameters);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

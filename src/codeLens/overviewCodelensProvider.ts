@@ -25,16 +25,18 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
       if (!this.document) { return; }
       const methodDeclarations = findMethodDeclarations(this.document);
       let selectedMethodName = "";
+      let selectedMethodParameters: string[] = [];
       methodDeclarations.some(methodDeclaration => {
         if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
           selectedMethodName = methodDeclaration.name;
+          selectedMethodParameters = methodDeclaration.parameters;
           return true;
         }
       });
       codeLens.command = {
         title: `Overview`,
         command: "infer-for-vscode.overviewCodelensAction",
-        arguments: [selectedMethodName]
+        arguments: [selectedMethodName, selectedMethodParameters]
       };
       return codeLens;
     }

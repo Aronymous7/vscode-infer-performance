@@ -26,7 +26,7 @@ export function disposeWebviews() {
   }
 }
 
-export function createWebviewOverview(selectedMethodName: string) {
+export function createWebviewOverview(selectedMethodName: string, selectedMethodParameters: string[]) {
   if (webviewOverview) {
     webviewOverview.dispose();
   }
@@ -43,7 +43,7 @@ export function createWebviewOverview(selectedMethodName: string) {
   for (let inferCostItem of currentInferCost) {
     if (inferCostItem.method_name === '<init>') { continue; }
     inferCostOverviewHtmlString += `<div>
-  <h2${inferCostItem.method_name === selectedMethodName ? ' class="selected-method"' : ''}>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
+  <h2${(inferCostItem.method_name === selectedMethodName && JSON.stringify(inferCostItem.parameters) === JSON.stringify(selectedMethodParameters)) ? ' class="selected-method"' : ''}>${inferCostItem.method_name} (line ${inferCostItem.loc.lnum})</h2>
   <div>
     <h3>Execution cost:</h3>
     <ul>
