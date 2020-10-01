@@ -65,8 +65,13 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
         };
         return codeLens;
       }
+
+      const costString = currentInferCostItem.exec_cost.degree !== -1 ?
+          `${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}` :
+          "Unknown";
+
       codeLens.command = {
-        title: `Execution cost${currentInferCostItem.changeCauseMethods ? " (might have changed!)" : ""}: ${currentInferCostItem.exec_cost.polynomial} ~~ ${currentInferCostItem.exec_cost.big_o}`,
+        title: `Execution cost${currentInferCostItem.changeCauseMethods ? " (might have changed!)" : ""}: ${costString}`,
         command: "infer-for-vscode.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };
