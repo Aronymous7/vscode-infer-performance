@@ -139,11 +139,11 @@ function getParameterTypesFromMethodDeclaration(methodDeclaration: string, typeE
       parameterType = parameterParts[i].split("<")[0];
     }
     for (const typeExtension of typeExtensions) {
-      parameterType = parameterType.replace("...", "[]");
       if (parameterType.split("[")[0] === typeExtension[0]) {
         parameterType = parameterType.replace(typeExtension[0], typeExtension[1]);
       }
     }
+    parameterType = parameterType.replace("...", "[]");
     parameterTypes[i] = parameterType;
   }
   return parameterTypes;
