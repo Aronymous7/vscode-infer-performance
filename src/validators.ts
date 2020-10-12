@@ -9,11 +9,16 @@ export function validateClassesFolder(classesFolder: string) {
   return /^([-\w]+|\.{1,2})(\/\w+)*\/?$/gm.test(classesFolder);
 }
 
-export async function isInferInstalled() {
+export async function checkInferVersion() {
   try {
-    await exec("infer --version");
+    let versionOutput = await exec("infer --version");
+    let regex = new RegExp(/v(\d)/);
+    let matches = regex.exec(versionOutput.stdout);
+    if (matches) {
+      return +matches[1];
+    }
   } catch (err) {
-    return false;
+    return -1;
   }
-  return true;
+  return -1;
 }
