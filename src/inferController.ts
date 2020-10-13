@@ -199,7 +199,7 @@ async function runInferOnCurrentFile(classesFolder?: string) {
       }
       await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o ${inferOutRawFolder} -- javac -cp infer-out-vscode/classes:${classesFolder}:build/libs:$CLASSPATH -d infer-out-vscode/classes ${sourceFilePath}`);
     } else {
-      await exec(`infer --cost-only -o ${currentWorkspaceFolder}/${inferOutRawFolder} -- javac ${sourceFilePath}`);
+      await exec(`cd ${currentWorkspaceFolder} && infer --cost-only -o ${inferOutRawFolder} -- javac ${sourceFilePath}`);
     }
   } catch (err) {
     vscode.workspace.fs.delete(vscode.Uri.file(`${currentWorkspaceFolder}/${inferOutRawFolder}`), {recursive: true});
