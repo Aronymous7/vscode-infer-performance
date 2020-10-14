@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ExecutionMode, EnableMode } from './types';
-import { validateBuildCommand, checkInferVersion, validateClassesFolder } from './validators';
+import { validateBuildCommand, isInferInstalled, validateClassesFolder } from './validators';
 import {
   inferCosts,
   executeInfer,
@@ -14,9 +14,7 @@ import {
   activeTextEditor,
   savedDocumentTexts,
   getCurrentWorkspaceFolder,
-  getSourceFileName,
-  setInferVersion,
-  inferVersion
+  getSourceFileName
 } from './inferController';
 import {
   significantCodeChangeCheck,
@@ -72,8 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForProject", async () => {
-    setInferVersion(await checkInferVersion());
-    if (inferVersion < 0) {
+    if (!await isInferInstalled()) {
       vscode.window.showErrorMessage("Infer is not installed on your system.");
       return;
     }
@@ -124,8 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForFile", async () => {
-    setInferVersion(await checkInferVersion());
-    if (inferVersion < 0) {
+    if (!await isInferInstalled()) {
       vscode.window.showErrorMessage("Infer is not installed on your system.");
       return;
     }

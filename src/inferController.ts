@@ -19,18 +19,12 @@ const fs = require('fs');
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
-export let inferVersion: number;
-
 export let activeTextEditor: vscode.TextEditor;
 export let savedDocumentTexts = new Map<string, string>();        // [document.fileName, text]
 
 export let currentInferCost: InferCostItem[];
 export let inferCosts = new Map<string, InferCostItem[]>();          // [inferCostItem.loc.file, inferCost]
 export let inferCostHistories = new Map<string, InferCostItem[]>();  // [inferCostItem.id, costHistory]
-
-export function setInferVersion(newInferVersion: number) {
-  inferVersion = newInferVersion;
-}
 
 export function setActiveTextEditor(newActiveTextEditor: vscode.TextEditor) {
   activeTextEditor = newActiveTextEditor;
@@ -261,9 +255,9 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
           lnum: inferCostRawItem.loc.lnum
         },
         alloc_cost: {
-          polynomial: inferVersion < 1 && inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/ \. /g, ' * ') : "Unknown",
-          degree: inferVersion < 1 && inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? +inferCostRawItem.alloc_cost.hum.hum_degree : -1,
-          big_o: inferVersion < 1 && inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? inferCostRawItem.alloc_cost.hum.big_o : "Unknown"
+          polynomial: inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/ \. /g, ' * ') : "Unknown",
+          degree: inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? +inferCostRawItem.alloc_cost.hum.hum_degree : -1,
+          big_o: inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? inferCostRawItem.alloc_cost.hum.big_o : "Unknown"
         },
         exec_cost: {
           polynomial: inferCostRawItem.exec_cost.hum.hum_degree !== "Top" ? inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/ \. /g, ' * ') : "Unknown",
