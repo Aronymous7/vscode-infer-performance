@@ -266,22 +266,9 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
   }
   if (executionMode === ExecutionMode.Project && !isSingleFileWithinProject) {
     inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.file.localeCompare(b.loc.file));
-    let sourceFilePath: string | undefined;
-    let fileInferCost: InferCostItem[] = [];
-    for (const inferCostItem of inferCost) {
-      if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
-        fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
-        inferCosts.set(sourceFilePath, fileInferCost);
-        fileInferCost = [inferCostItem];
-      } else {
-        fileInferCost.push(inferCostItem);
-      }
-      sourceFilePath = inferCostItem.loc.file;
+    if (!initializeInferCostsAndCurrentInferCost(inferCost)) {
+      return false;
     }
-    const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
-    if (tmpInferCost) {
-      setCurrentInferCost(tmpInferCost);
-    } else { return false; }
   } else {
     setCurrentInferCost(inferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum));
     inferCosts.set(activeTextEditor.document.fileName, currentInferCost);
@@ -335,30 +322,39 @@ async function readInferCostsReport(costsReportFile: string) {
   }
 
   if (executionMode === ExecutionMode.Project) {
-    let sourceFilePath: string | undefined;
-    let fileInferCost: InferCostItem[] = [];
-    for (const inferCostItem of inferCost) {
-      if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
-        fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
-        inferCosts.set(sourceFilePath, fileInferCost);
-        fileInferCost = [inferCostItem];
-      } else {
-        fileInferCost.push(inferCostItem);
-      }
-      sourceFilePath = inferCostItem.loc.file;
+    if (!initializeInferCostsAndCurrentInferCost(inferCost)) {
+      return false;
     }
-    if (sourceFilePath) {
-      fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
-      inferCosts.set(sourceFilePath, fileInferCost);
-    }
-    const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
-    if (tmpInferCost) {
-      setCurrentInferCost(tmpInferCost);
-    } else { return false; }
   } else {
     setCurrentInferCost(inferCost);
     inferCosts.set(activeTextEditor.document.fileName, inferCost);
   }
+
+  return true;
+}
+
+function initializeInferCostsAndCurrentInferCost(inferCost: InferCostItem[]) {
+  let sourceFilePath: string | undefined;
+  let fileInferCost: InferCostItem[] = [];
+  for (const inferCostItem of inferCost) {
+    if (sourceFilePath && sourceFilePath !== inferCostItem.loc.file) {
+      fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
+      inferCosts.set(sourceFilePath, fileInferCost);
+      fileInferCost = [inferCostItem];
+    } else {
+      fileInferCost.push(inferCostItem);
+    }
+    sourceFilePath = inferCostItem.loc.file;
+  }
+  if (sourceFilePath) {
+    fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
+    inferCosts.set(sourceFilePath, fileInferCost);
+  }
+
+  const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
+  if (tmpInferCost) {
+    setCurrentInferCost(tmpInferCost);
+  } else { return false; }
 
   return true;
 }
