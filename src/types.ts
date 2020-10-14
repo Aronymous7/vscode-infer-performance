@@ -20,11 +20,6 @@ export interface InferCostItem {
     readonly file: string;  // absolute path
     readonly lnum: number;
   };
-  readonly alloc_cost: {
-    readonly polynomial: string;
-    readonly degree: number;
-    readonly big_o: string;
-  };
   readonly exec_cost: {
     readonly polynomial: string;
     readonly degree: number;

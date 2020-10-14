@@ -254,11 +254,6 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
           file: executionMode === ExecutionMode.Project ? `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}` : activeTextEditor.document.fileName,
           lnum: inferCostRawItem.loc.lnum
         },
-        alloc_cost: {
-          polynomial: inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? inferCostRawItem.alloc_cost.hum.hum_polynomial.replace(/ \. /g, ' * ') : "Unknown",
-          degree: inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? +inferCostRawItem.alloc_cost.hum.hum_degree : -1,
-          big_o: inferCostRawItem.alloc_cost.hum.hum_degree !== "Top" ? inferCostRawItem.alloc_cost.hum.big_o : "Unknown"
-        },
         exec_cost: {
           polynomial: inferCostRawItem.exec_cost.hum.hum_degree !== "Top" ? inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/ \. /g, ' * ') : "Unknown",
           degree: inferCostRawItem.exec_cost.hum.hum_degree !== "Top" ? +inferCostRawItem.exec_cost.hum.hum_degree : -1,
@@ -351,6 +346,10 @@ async function readInferCostsReport(costsReportFile: string) {
         fileInferCost.push(inferCostItem);
       }
       sourceFilePath = inferCostItem.loc.file;
+    }
+    if (sourceFilePath) {
+      fileInferCost.sort((a: InferCostItem, b: InferCostItem) => a.loc.lnum - b.loc.lnum);
+      inferCosts.set(sourceFilePath, fileInferCost);
     }
     const tmpInferCost = inferCosts.get(activeTextEditor.document.fileName);
     if (tmpInferCost) {

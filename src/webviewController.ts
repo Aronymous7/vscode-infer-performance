@@ -51,13 +51,6 @@ export function createWebviewOverview(selectedMethodName: string, selectedMethod
       <li>${inferCostItem.exec_cost.big_o}</li>
     </ul>
   </div>
-  <div>
-    <h3>Allocation cost:</h3>
-    <ul>
-      <li>${inferCostItem.alloc_cost.polynomial}</li>
-      <li>${inferCostItem.alloc_cost.big_o}</li>
-    </ul>
-  </div>
 </div>
 <hr>`;
   }
@@ -129,13 +122,6 @@ export function createWebviewHistory(methodKey: string) {
     <ul>
       <li>${costHistoryItem.exec_cost.polynomial}</li>
       <li>${costHistoryItem.exec_cost.big_o}</li>
-    </ul>
-  </div>
-  <div>
-    <h3>Allocation cost:</h3>
-    <ul>
-      <li>${costHistoryItem.alloc_cost.polynomial}</li>
-      <li>${costHistoryItem.alloc_cost.big_o}</li>
     </ul>
   </div>
 </div>
