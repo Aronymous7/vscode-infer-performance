@@ -166,24 +166,3 @@ function getGenericTypeExtensions(documentText: string) {
   }
   return typeExtensions;
 }
-
-export function addMethodToWhitelist(methodName: string) {
-  if (!methodName.match(/^[A-Za-z_$][A-Za-z0-9_]+$/gm)) {
-    vscode.window.showInformationMessage("Not a valid method name.");
-    return;
-  }
-  let methodWhitelist: string[] = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
-  for (const whitelistedMethod of methodWhitelist) {
-    if (whitelistedMethod === methodName) {
-      return;
-    }
-  }
-  methodWhitelist.push(methodName);
-  vscode.workspace.getConfiguration("infer-for-vscode").update("methodWhitelist", methodWhitelist, true);
-}
-
-export function removeMethodFromWhitelist(methodName: string) {
-  let methodWhitelist: string[] = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
-  methodWhitelist = methodWhitelist.filter(method => method !== methodName);
-  vscode.workspace.getConfiguration("infer-for-vscode").update("methodWhitelist", methodWhitelist, true);
-}

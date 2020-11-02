@@ -13,7 +13,7 @@
   "keywords": [
     "Infer",
     "Facebook",
-    "Runtime analysis",
+    "Performance analysis",
     "Static analysis",
     "Java"
   ],
@@ -51,21 +51,6 @@
       {
         "command": "infer-for-vscode.disable",
         "title": "Disable performance analysis",
-        "category": "Infer"
-      },
-      {
-        "command": "infer-for-vscode.cleanInferOut",
-        "title": "Clean Infer output folder created by this extension",
-        "category": "Infer"
-      },
-      {
-        "command": "infer-for-vscode.addMethodToWhitelist",
-        "title": "Add method to whitelist",
-        "category": "Infer"
-      },
-      {
-        "command": "infer-for-vscode.removeMethodFromWhitelist",
-        "title": "Remove method from whitelist",
         "category": "Infer"
       }
     ],

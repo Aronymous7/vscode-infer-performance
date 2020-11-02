@@ -7,7 +7,6 @@ import {
   enableInfer,
   readInferOut,
   disableInfer,
-  cleanInferOut,
   setCurrentInferCost,
   setActiveTextEditor,
   updateSavedDocumentText,
@@ -16,11 +15,7 @@ import {
   getCurrentWorkspaceFolder,
   getSourceFileName
 } from './inferController';
-import {
-  significantCodeChangeCheck,
-  addMethodToWhitelist,
-  removeMethodFromWhitelist,
-} from './javaCodeHandler';
+import { significantCodeChangeCheck } from './javaCodeHandler';
 import { createEditorDecorators } from './editorDecoratorController';
 import { createWebviewOverview, createWebviewHistory } from './webviewController';
 import { hasFileCodeLenses, createCodeLenses } from './codeLens/codelensController';
@@ -182,30 +177,6 @@ export function activate(context: vscode.ExtensionContext) {
     isExtensionEnabled = false;
     disableInfer();
     vscode.window.showInformationMessage("Infer disabled.");
-  });
-  disposables.push(disposableCommand);
-  context.subscriptions.push(disposableCommand);
-
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.cleanInferOut", () => {
-    cleanInferOut();
-  });
-  disposables.push(disposableCommand);
-  context.subscriptions.push(disposableCommand);
-
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.addMethodToWhitelist", async () => {
-    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should not trigger re-execution of Infer.', placeHolder: "e.g. cheapMethod", ignoreFocusOut: true }))?.trim();
-    if (methodName) {
-      addMethodToWhitelist(methodName);
-    }
-  });
-  disposables.push(disposableCommand);
-  context.subscriptions.push(disposableCommand);
-
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.removeMethodFromWhitelist", async () => {
-    const methodName = (await vscode.window.showInputBox({ prompt: 'Enter name of method that should be removed from the whitelist.', placeHolder: "e.g. expensiveMethod", ignoreFocusOut: true }))?.trim();
-    if (methodName) {
-      removeMethodFromWhitelist(methodName);
-    }
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

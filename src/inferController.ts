@@ -144,10 +144,6 @@ export function disableInfer() {
   savedDocumentTexts = new Map<string, string>();
 }
 
-export function cleanInferOut() {
-  vscode.workspace.fs.delete(vscode.Uri.file(`${getCurrentWorkspaceFolder()}/infer-out-vscode`), {recursive: true});
-}
-
 async function runInferOnProject(buildCommand: string) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
