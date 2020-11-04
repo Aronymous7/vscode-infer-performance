@@ -26,6 +26,14 @@ export interface InferCostItem {
     readonly big_o: string;
   };
   changeCauseMethods?: string[];
+  readonly trace: TraceItem[];
+}
+
+export interface TraceItem {
+  readonly level: number;
+  readonly filename: string;
+  readonly line_number: number;
+  readonly description: string;
 }
 
 export interface MethodDeclaration {

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { InferCostItem, ExecutionMode, EnableMode } from './types';
+import { InferCostItem, ExecutionMode, EnableMode, TraceItem } from './types';
 import { executionMode } from './extension';
 import {
   nonConstantMethods,
@@ -232,9 +232,11 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
       if (inferCostRawItem.procedure_name === "<init>" || inferCostRawItem.procedure_name === "<clinit>") {
         continue;
       }
+
       if (+inferCostRawItem.exec_cost.hum.hum_degree !== 0 && !nonConstantMethods.includes(inferCostRawItem.procedure_name)) {
         nonConstantMethods.push(inferCostRawItem.procedure_name);
       }
+
       let parameterTypes = inferCostRawItem.procedure_id.split("(")[1].split(")")[0].split(",");
       if (parameterTypes[0] === "") {
         parameterTypes = [];
@@ -242,6 +244,17 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
       for (let i in parameterTypes) {
         parameterTypes[i] = parameterTypes[i].split(".").pop();
       }
+
+      let traceArray: TraceItem[] = [];
+      for (const traceItem of inferCostRawItem.exec_cost.trace) {
+        traceArray.push({
+          level: +traceItem.level,
+          filename: traceItem.filename,
+          line_number: +traceItem.line_number,
+          description: traceItem.description
+        });
+      }
+
       inferCost.push({
         id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
@@ -254,7 +267,8 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
           polynomial: inferCostRawItem.exec_cost.hum.hum_degree !== "Top" ? inferCostRawItem.exec_cost.hum.hum_polynomial.replace(/ \. /g, ' * ') : "Unknown",
           degree: inferCostRawItem.exec_cost.hum.hum_degree !== "Top" ? +inferCostRawItem.exec_cost.hum.hum_degree : -1,
           big_o: inferCostRawItem.exec_cost.hum.hum_degree !== "Top" ? inferCostRawItem.exec_cost.hum.big_o : "Unknown"
-        }
+        },
+        trace: traceArray
       });
     }
   } catch (err) {

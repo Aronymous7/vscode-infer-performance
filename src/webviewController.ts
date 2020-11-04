@@ -12,6 +12,18 @@ strong {
 }
 strong.first {
   background-color: rgba(200, 100, 0, 0.3);
+}
+#hidden {
+  display: none;
+}
+:checked + #hidden {
+  display: block;
+}
+.show-hide-button {
+  background-color: rgba(100, 100, 0, 0.3);
+}
+.trace-item {
+  margin-bottom: 10px;
 }`;
 
 let webviewOverview: vscode.WebviewPanel;
@@ -114,6 +126,26 @@ export function createWebviewHistory(methodKey: string) {
 </div>`;
     }
 
+    let traceString = ``;
+    for (const traceItem of costHistoryItem.trace) {
+      traceString += `<ul class="trace-item">`;
+      let level = 0;
+      while (level < traceItem.level) {
+        traceString += `<ul>`;
+        level++;
+      }
+
+      traceString += `<li>File: ${traceItem.filename}</li>
+<li>Line: ${traceItem.line_number}</li>
+<li>Description: ${traceItem.description}</li>`;
+
+      while (level > 0) {
+        traceString += `</ul>`;
+        level--;
+      }
+      traceString += `</ul>`;
+    }
+
     inferCostHistoryHtmlString += `<div>
   ${changeCauseString}
   <h2>${costHistoryItem.timestamp + (costHistoryItem === costHistory[0] ? ' (most recent)' : '')}</h2>
@@ -123,6 +155,14 @@ export function createWebviewHistory(methodKey: string) {
       <li>${costHistoryItem.exec_cost.polynomial}</li>
       <li>${costHistoryItem.exec_cost.big_o}</li>
     </ul>
+  </div>
+  <div>
+    <h3>Trace:</h3>
+    <input type="checkbox" id="my_checkbox" style="display:none;">
+    <div id="hidden">
+      ${traceString}
+    </div>
+    <label for="my_checkbox" class="show-hide-button">Show/hide trace</label>
   </div>
 </div>
 <hr>`;
