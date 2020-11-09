@@ -127,23 +127,33 @@ export function createWebviewHistory(methodKey: string) {
     }
 
     let traceString = ``;
-    for (const traceItem of costHistoryItem.trace) {
-      traceString += `<ul class="trace-item">`;
-      let level = 0;
-      while (level < traceItem.level) {
-        traceString += `<ul>`;
-        level++;
-      }
+    if (costHistoryItem === costHistory[0]) {
+      for (const traceItem of costHistoryItem.trace) {
+        traceString += `<ul class="trace-item">`;
+        let level = 0;
+        while (level < traceItem.level) {
+          traceString += `<ul>`;
+          level++;
+        }
 
-      traceString += `<li>File: ${traceItem.filename}</li>
-<li>Line: ${traceItem.line_number}</li>
-<li>Description: ${traceItem.description}</li>`;
+        traceString += `<li>File: ${traceItem.filename}</li>
+  <li>Line: ${traceItem.line_number}</li>
+  <li>Description: ${traceItem.description}</li>`;
 
-      while (level > 0) {
+        while (level > 0) {
+          traceString += `</ul>`;
+          level--;
+        }
         traceString += `</ul>`;
-        level--;
       }
-      traceString += `</ul>`;
+      traceString = `<div>
+  <h3>Trace:</h3>
+  <input type="checkbox" id="my_checkbox" style="display:none;">
+  <div id="hidden">
+    ${traceString}
+  </div>
+  <label for="my_checkbox" class="show-hide-button">Show/hide trace</label>
+</div>`;
     }
 
     inferCostHistoryHtmlString += `<div>
@@ -156,14 +166,7 @@ export function createWebviewHistory(methodKey: string) {
       <li>${costHistoryItem.exec_cost.big_o}</li>
     </ul>
   </div>
-  <div>
-    <h3>Trace:</h3>
-    <input type="checkbox" id="my_checkbox" style="display:none;">
-    <div id="hidden">
-      ${traceString}
-    </div>
-    <label for="my_checkbox" class="show-hide-button">Show/hide trace</label>
-  </div>
+  ${traceString}
 </div>
 <hr>`;
   }
