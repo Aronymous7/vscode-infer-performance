@@ -67,7 +67,7 @@ export function significantCodeChangeCheck(savedText: string) {
 
   const typeExtensions = getGenericTypeExtensions(previousText);
   let containingAndCauseMethods = new Map<string, string[]>();
-  const methodWhitelist: string[] = vscode.workspace.getConfiguration("infer-for-vscode").get("methodWhitelist", []);
+  const methodWhitelist: string[] = vscode.workspace.getConfiguration("performance-by-infer").get("methodWhitelist", []);
   const diffText: LineDiff[] = Diff.diffLines(previousText, savedText);
   let isSignificant = false;
   for (let diffTextPartIndex in diffText) {

@@ -1,8 +1,8 @@
 {
-  "name": "infer-for-vscode",
-  "displayName": "Infer for VSCode",
-  "description": "Static runtime analysis for Java code, powered by Facebook's Infer.",
-  "version": "0.0.1",
+  "name": "performance-by-infer",
+  "displayName": "Static Performance by Infer",
+  "description": "Integration of Infer's static performance analysis for Java code into VSCode.",
+  "version": "1.0.0",
   "publisher": "Aaron Beigelbeck",
   "engines": {
     "vscode": "^1.45.0"
@@ -24,32 +24,32 @@
   "contributes": {
     "commands": [
       {
-        "command": "infer-for-vscode.reExecute",
+        "command": "performance-by-infer.reExecute",
         "title": "Re-execute performance analysis",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.reExecuteForFileWithinProject",
+        "command": "performance-by-infer.reExecuteForFileWithinProject",
         "title": "Re-execute performance analysis for current file within project",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.enableForProject",
+        "command": "performance-by-infer.enableForProject",
         "title": "Enable performance analysis for current project",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.enableForFile",
+        "command": "performance-by-infer.enableForFile",
         "title": "Enable performance analysis only for current file",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.readInferOut",
+        "command": "performance-by-infer.readInferOut",
         "title": "Load performance data from infer-out folder in project root",
         "category": "Infer"
       },
       {
-        "command": "infer-for-vscode.disable",
+        "command": "performance-by-infer.disable",
         "title": "Disable performance analysis",
         "category": "Infer"
       }
@@ -57,28 +57,42 @@
     "configuration": {
       "title": "Infer",
       "properties": {
-        "infer-for-vscode.methodWhitelist": {
+        "performance-by-infer.methodWhitelist": {
           "type": "array",
-          "default": ["print", "println"],
+          "default": [
+            "print",
+            "println"
+          ],
           "description": "Whitelisted methods that won't lead to an automatic re-execution of Infer when a call to them is added or removed somewhere in your code.",
-          "examples": [["cheapMethod1", "cheapMethod2"]],
+          "examples": [
+            [
+              "cheapMethod1",
+              "cheapMethod2"
+            ]
+          ],
           "uniqueItems": true
         },
-        "infer-for-vscode.automaticReExecution": {
+        "performance-by-infer.automaticReExecution": {
           "type": "boolean",
           "default": false,
           "description": "Enable automatic re-execution of Infer when significant code changes get saved. Since this includes at least partial re-compilation, use with caution for larger projects."
         },
-        "infer-for-vscode.buildCommand": {
+        "performance-by-infer.buildCommand": {
           "type": "string",
           "description": "The build command to be used by Infer for compiling your project. Currently supported build tools: javac, maven, gradle",
-          "examples": ["mvn compile", "./gradlew build"],
+          "examples": [
+            "mvn compile",
+            "./gradlew build"
+          ],
           "pattern": "^(javac|mvn|gradle|\\.\\/gradlew) .*"
         },
-        "infer-for-vscode.classesFolder": {
+        "performance-by-infer.classesFolder": {
           "type": "string",
           "description": "The root package folder containing the compiled files from the project build. Required for single file execution within project.",
-          "examples": ["target/classes", "build/classes/main"],
+          "examples": [
+            "target/classes",
+            "build/classes/main"
+          ],
           "minLength": 1,
           "pattern": "^([-\\w]+|\\.{1,2})(\\/\\w+)*\\/?$"
         }

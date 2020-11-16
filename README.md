@@ -1,65 +1,47 @@
-# infer-for-vscode README
+# Static Performance Analysis for VSCode by Infer
 
-This is the README for your extension "infer-for-vscode". After writing up a brief description, we recommend including the following sections.
+This VSCode extension integrates the performance data for Java code by Facebook's static analysis tool Infer via code annotations, decorations, and separate side panel views showing details and overviews.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- CodeLenses showing function cost in big-O notation
+- Detail/history view and overview windows when clicking on CodeLenses
+- Traces in detail view explaining the calculated cost
+- Cost-dependent color coding for functions
+- Big changes in cost between analyses shown next to function
+- Warning in CodeLens when function cost might have changed significantly based on code changes
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+So far, this extension is only usable on Unix-based systems.
+
+Infer version 1.0 or higher must be installed on your system.
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
+* `performance-by-infer.methodWhitelist`: Whitelisted methods that won't lead to an automatic re-execution of Infer when a call to them is added or removed somewhere in your code.
+* `performance-by-infer.automaticReExecution`: Enable automatic re-execution of Infer when significant code changes get saved. Since this includes at least partial re-compilation, use with caution for larger projects.
+* `performance-by-infer.buildCommand`: The build command to be used by Infer for compiling your project. Currently supported build tools: javac, maven, gradle
+* `performance-by-infer.classesFolder`: The root package folder containing the compiled files from the project build. Required for single file execution within project.
+
+## Tips/Caveats
+
+- You might want to add infer-out and infer-out-vscode to your .gitignore
+- When running infer outside of the extension, run it in the folder you open in VSCode to avoid issues with saved file paths.
+- Recommended: Use fastest build command possible that compiles only necessary files (e.g. mvn compile -pl ...)
+- Careful with renaming methods and changing their parameters, since the extension uses those to match the performance data.
+- It is recommended to run Infer outside of the extension, and read the infer-out folder when enabling it (at least for larger projects).
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- Automatic re-execution and warning about potential performance changes works only when **currently open** file gets saved.
+- Nested classes containing methods with same name and parameters as outer class can cause mapping issues
+- Infer cannot always statically analyze all constructs, so the costs of some functions are unknown.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
------------------------------------------------------------------------------------------------------------
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (macOS) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Initial release of the extension.

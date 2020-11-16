@@ -47,7 +47,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
       if (!thisMethodDeclaration) {
         codeLens.command = {
           title: "No performance data available for this method.",
-          command: "infer-for-vscode.detailCodelensError"
+          command: "performance-by-infer.detailCodelensError"
         };
         return codeLens;
       }
@@ -61,7 +61,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
       if (!currentInferCostItem) {
         codeLens.command = {
           title: "No performance data available for this method.",
-          command: "infer-for-vscode.detailCodelensError"
+          command: "performance-by-infer.detailCodelensError"
         };
         return codeLens;
       }
@@ -72,7 +72,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
 
       codeLens.command = {
         title: `Execution cost${currentInferCostItem.changeCauseMethods ? " (⚠️ might have changed ⚠️)" : ""}: ${costString}`,
-        command: "infer-for-vscode.detailCodelensAction",
+        command: "performance-by-infer.detailCodelensAction",
         arguments: [currentInferCostItem.id]
       };
       return codeLens;

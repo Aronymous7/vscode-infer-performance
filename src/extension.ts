@@ -28,7 +28,7 @@ export let isExtensionEnabled = false;
 export let executionMode: ExecutionMode;
 
 export function activate(context: vscode.ExtensionContext) {
-  let disposableCommand = vscode.commands.registerCommand("infer-for-vscode.reExecute", () => {
+  let disposableCommand = vscode.commands.registerCommand("performance-by-infer.reExecute", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
       return;
@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.reExecuteForFileWithinProject", async () => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.reExecuteForFileWithinProject", async () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
       return;
@@ -48,11 +48,11 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    let classesFolder: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('classesFolder');
+    let classesFolder: string | undefined = vscode.workspace.getConfiguration('performance-by-infer').get('classesFolder');
     if (!classesFolder) {
       classesFolder = (await vscode.window.showInputBox({ prompt: 'Specify the root package folder containing the compiled files.', placeHolder: "e.g. target/classes, build/classes/main, etc.", ignoreFocusOut: true }))?.trim();
       if (classesFolder && validateClassesFolder(classesFolder)) {
-        vscode.workspace.getConfiguration('infer-for-vscode').update('classesFolder', classesFolder, true);
+        vscode.workspace.getConfiguration('performance-by-infer').update('classesFolder', classesFolder, true);
       } else {
         vscode.window.showErrorMessage("Invalid path entered. Please give the relative path from your project root.");
         return;
@@ -64,7 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForProject", async () => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.enableForProject", async () => {
     if (!await isInferInstalled()) {
       vscode.window.showErrorMessage("Infer is not installed on your system.");
       return;
@@ -78,11 +78,11 @@ export function activate(context: vscode.ExtensionContext) {
     }
     executionMode = ExecutionMode.Project;
 
-    let buildCommand: string | undefined = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand');
+    let buildCommand: string | undefined = vscode.workspace.getConfiguration('performance-by-infer').get('buildCommand');
     if (!buildCommand) {
       buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. mvn compile, ./gradlew build, etc.", ignoreFocusOut: true }))?.trim();
       if (buildCommand && validateBuildCommand(buildCommand)) {
-        vscode.workspace.getConfiguration('infer-for-vscode').update('buildCommand', buildCommand, true);
+        vscode.workspace.getConfiguration('performance-by-infer').update('buildCommand', buildCommand, true);
       } else {
         vscode.window.showErrorMessage("Invalid build command entered. Currently supported build tools: javac, maven, gradle");
         return;
@@ -115,7 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.enableForFile", async () => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.enableForFile", async () => {
     if (!await isInferInstalled()) {
       vscode.window.showErrorMessage("Infer is not installed on your system.");
       return;
@@ -159,7 +159,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.readInferOut", () => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.readInferOut", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Infer is not enabled.");
       return;
@@ -169,7 +169,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.disable", () => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.disable", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Infer is not enabled.");
       return;
@@ -181,19 +181,19 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensAction", (methodKey: string) => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.detailCodelensAction", (methodKey: string) => {
     createWebviewHistory(methodKey);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.detailCodelensError", () => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.detailCodelensError", () => {
     vscode.window.showInformationMessage("Re-execute Infer to get fresh performance data.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  disposableCommand = vscode.commands.registerCommand("infer-for-vscode.overviewCodelensAction", (selectedMethodName: string, selectedMethodParameters: string[]) => {
+  disposableCommand = vscode.commands.registerCommand("performance-by-infer.overviewCodelensAction", (selectedMethodName: string, selectedMethodParameters: string[]) => {
     createWebviewOverview(selectedMethodName, selectedMethodParameters);
   });
   disposables.push(disposableCommand);
@@ -223,7 +223,7 @@ export function activate(context: vscode.ExtensionContext) {
         inferCosts.get(activeTextEditor.document.fileName) &&
         significantCodeChangeCheck(document.getText())) {
 
-      if (vscode.workspace.getConfiguration('infer-for-vscode').get('automaticReExecution', false)) {
+      if (vscode.workspace.getConfiguration('performance-by-infer').get('automaticReExecution', false)) {
         showExecutionProgress(executeInfer, "Automatic re-execution of Infer...");
       }
     }

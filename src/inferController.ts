@@ -59,7 +59,7 @@ export function getCurrentWorkspaceFolder() {
 export async function executeInfer(classesFolder?: string) {
   if (executionMode === ExecutionMode.Project) {
     if (!classesFolder) {
-      const buildCommand: string = vscode.workspace.getConfiguration('infer-for-vscode').get('buildCommand', "");
+      const buildCommand: string = vscode.workspace.getConfiguration('performance-by-infer').get('buildCommand', "");
       if (!buildCommand) {
         vscode.window.showErrorMessage("Build command could not be found in VSCode config");
         return false;
