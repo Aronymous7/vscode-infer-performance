@@ -1,31 +1,6 @@
 import * as vscode from 'vscode';
 import { currentInferCost, inferCostHistories, activeTextEditor } from '../inferController';
 
-const cssStyling = `ul, h3 {
-  margin: 0;
-}
-.selected-method {
-  background-color: rgba(200, 200, 0, 0.2);
-}
-strong {
-  font-size: 110%;
-}
-strong.first {
-  background-color: rgba(200, 100, 0, 0.3);
-}
-#hidden {
-  display: none;
-}
-:checked + #hidden {
-  display: block;
-}
-.show-hide-button {
-  background-color: rgba(100, 100, 0, 0.3);
-}
-.trace-item {
-  margin-bottom: 10px;
-}`;
-
 let webviewOverview: vscode.WebviewPanel;
 let webviewHistory: vscode.WebviewPanel;
 
