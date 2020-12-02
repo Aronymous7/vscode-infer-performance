@@ -13,7 +13,7 @@ import {
   disposeDecorationTypes
 } from './editorDecoratorController';
 import { createCodeLenses, disposeCodeLensProviders } from './codeLens/codelensController';
-import { disposeWebviews } from './webviewController';
+import { disposeWebviews } from './webview/webviewController';
 
 const fs = require('fs');
 const util = require('util');

@@ -17,7 +17,7 @@ import {
 } from './inferController';
 import { significantCodeChangeCheck } from './javaCodeHandler';
 import { createEditorDecorators } from './editorDecoratorController';
-import { createWebviewOverview, createWebviewHistory } from './webviewController';
+import { createWebviewOverview, createWebviewHistory } from './webview/webviewController';
 import { hasFileCodeLenses, createCodeLenses } from './codeLens/codelensController';
 
 const fs = require('fs');
@@ -182,7 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.detailCodelensAction", (methodKey: string) => {
-    createWebviewHistory(methodKey);
+    createWebviewHistory(context.extensionUri, methodKey);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
@@ -194,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposableCommand);
 
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.overviewCodelensAction", (selectedMethodName: string, selectedMethodParameters: string[]) => {
-    createWebviewOverview(selectedMethodName, selectedMethodParameters);
+    createWebviewOverview(context.extensionUri, selectedMethodName, selectedMethodParameters);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);

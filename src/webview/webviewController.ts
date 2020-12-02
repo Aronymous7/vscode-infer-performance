@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { currentInferCost, inferCostHistories, activeTextEditor } from './inferController';
+import { currentInferCost, inferCostHistories, activeTextEditor } from '../inferController';
 
 const cssStyling = `ul, h3 {
   margin: 0;
@@ -38,7 +38,7 @@ export function disposeWebviews() {
   }
 }
 
-export function createWebviewOverview(selectedMethodName: string, selectedMethodParameters: string[]) {
+export function createWebviewOverview(extensionUri: vscode.Uri, selectedMethodName: string, selectedMethodParameters: string[]) {
   if (webviewOverview) {
     webviewOverview.dispose();
   }
@@ -48,7 +48,7 @@ export function createWebviewOverview(selectedMethodName: string, selectedMethod
     'inferCostOverview', // Identifies the type of the webview. Used internally
     'Infer Cost Overview', // Title of the panel displayed to the user
     {viewColumn: vscode.ViewColumn.Two, preserveFocus: true}, // Editor column to show the new webview panel in.
-    {localResourceRoots: []} // Webview options.
+    {localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'src', 'webview', 'media')]} // Webview options.
   );
 
   let inferCostOverviewHtmlString = "";
@@ -67,15 +67,20 @@ export function createWebviewOverview(selectedMethodName: string, selectedMethod
 <hr>`;
   }
 
+  const stylesPath = vscode.Uri.joinPath(extensionUri, 'src', 'webview', 'media', 'styles.css');
+  const stylesUri = webviewOverview.webview.asWebviewUri(stylesPath);
+
   webviewOverview.webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src ${webviewOverview.webview.cspSource};"
+  >
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infer Cost Overview</title>
-  <style>
-    ${cssStyling}
-  </style>
+  <link href="${stylesUri}" rel="stylesheet">
 </head>
 <body>
   <h1>Infer Cost Overview</h1>
@@ -87,7 +92,7 @@ export function createWebviewOverview(selectedMethodName: string, selectedMethod
 </html>`;
 }
 
-export function createWebviewHistory(methodKey: string) {
+export function createWebviewHistory(extensionUri: vscode.Uri, methodKey: string) {
   if (webviewHistory) {
     webviewHistory.dispose();
   }
@@ -97,7 +102,7 @@ export function createWebviewHistory(methodKey: string) {
     'inferCostHistory', // Identifies the type of the webview. Used internally
     'Infer Cost History', // Title of the panel displayed to the user
     {viewColumn: vscode.ViewColumn.Two, preserveFocus: true}, // Editor column to show the new webview panel in.
-    {localResourceRoots: []} // Webview options.
+    {localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'src', 'webview', 'media')]} // Webview options.
   );
 
   const costHistory = inferCostHistories.get(methodKey);
@@ -148,11 +153,11 @@ export function createWebviewHistory(methodKey: string) {
       }
       traceString = `<div>
   <h3>Trace:</h3>
-  <input type="checkbox" id="my_checkbox" style="display:none;">
+  <input type="checkbox" id="trace_checkbox">
   <div id="hidden">
     ${traceString}
   </div>
-  <label for="my_checkbox" class="show-hide-button">Show/hide trace</label>
+  <label for="trace_checkbox" class="show-hide-button">Show/hide trace</label>
 </div>`;
     }
 
@@ -171,15 +176,20 @@ export function createWebviewHistory(methodKey: string) {
 <hr>`;
   }
 
+  const stylesPath = vscode.Uri.joinPath(extensionUri, 'src', 'webview', 'media', 'styles.css');
+  const stylesUri = webviewHistory.webview.asWebviewUri(stylesPath);
+
   webviewHistory.webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src ${webviewHistory.webview.cspSource};"
+  >
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infer Cost History</title>
-  <style>
-    ${cssStyling}
-  </style>
+  <link href="${stylesUri}" rel="stylesheet">
 </head>
 <body>
   <h1>Infer Cost History for: ${costHistory[0].method_name} (line ${costHistory[0].loc.lnum})</h1>
