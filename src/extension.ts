@@ -22,12 +22,15 @@ import { hasFileCodeLenses, createCodeLenses } from './codeLens/codelensControll
 
 const fs = require('fs');
 
-let disposables: vscode.Disposable[] = [];
+let disposables: vscode.Disposable[] = [];  // Commands that get disposed when deactivating the extension.
 
 export let isExtensionEnabled = false;
-export let executionMode: ExecutionMode;
+export let executionMode: ExecutionMode;    // 'Project' or 'File'
 
+// Called when the extension is activated.
 export function activate(context: vscode.ExtensionContext) {
+
+  // Re-run Infer analysis on current project or file, depending on executionMode.
   let disposableCommand = vscode.commands.registerCommand("performance-by-infer.reExecute", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
@@ -38,6 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Re-run analysis on single file within a project (like re-execution on current file, but within executionMode 'Project').
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.reExecuteForFileWithinProject", async () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Please enable Infer before re-executing.");
@@ -48,6 +52,8 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
+    // Necessary for re-compilation of file with dependencies within the current project. For Maven for example, this could
+    // be something like 'target/classes'.
     let classesFolder: string | undefined = vscode.workspace.getConfiguration('performance-by-infer').get('classesFolder');
     if (!classesFolder) {
       classesFolder = (await vscode.window.showInputBox({ prompt: 'Specify the root package folder containing the compiled files.', placeHolder: "e.g. target/classes, build/classes/main, etc.", ignoreFocusOut: true }))?.trim();
@@ -64,6 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Enable the extension for the currently open project in VSCode.
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.enableForProject", async () => {
     if (!await isInferInstalled()) {
       vscode.window.showErrorMessage("Infer is not installed on your system.");
@@ -78,6 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     executionMode = ExecutionMode.Project;
 
+    // Custom build command for the project (e.g. 'mvn compile').
     let buildCommand: string | undefined = vscode.workspace.getConfiguration('performance-by-infer').get('buildCommand');
     if (!buildCommand) {
       buildCommand = (await vscode.window.showInputBox({ prompt: 'Enter the build command for your project.', placeHolder: "e.g. mvn compile, ./gradlew build, etc.", ignoreFocusOut: true }))?.trim();
@@ -89,6 +97,8 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }
 
+    // Allows the user to decide whether to load the most recently used performance data, read it from the 'infer-out' folder
+    // in the project root, or run a fresh analysis.
     let quickPickArray: string[] = ["Fresh execution (make sure to clean the project before)"];
     const currentWorkspaceFolder = getCurrentWorkspaceFolder();
     try {
@@ -115,6 +125,7 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Enable the extension for the currently open file.
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.enableForFile", async () => {
     if (!await isInferInstalled()) {
       vscode.window.showErrorMessage("Infer is not installed on your system.");
@@ -129,6 +140,8 @@ export function activate(context: vscode.ExtensionContext) {
     }
     executionMode = ExecutionMode.File;
 
+    // Allows the user to decide whether to load the most recently used performance data, read it from the 'infer-out' folder
+    // in the project root, or run a fresh analysis.
     let quickPickArray: string[] = ["Fresh execution"];
     const currentWorkspaceFolder = getCurrentWorkspaceFolder();
     let sourceFileName = "";
@@ -159,6 +172,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Runnable when the extension is already enabled. Reads and loads performance data from the 'infer-out' folder in the
+  // project root, for example when a fresh analysis has been run outside of the extension.
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.readInferOut", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Infer is not enabled.");
@@ -169,6 +184,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Disable everything related to the extension (CodeLenses, editor decorations, webviews) and reset all according values.
+  // Does NOT deactivate the extension for VSCode.
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.disable", () => {
     if (!isExtensionEnabled) {
       vscode.window.showInformationMessage("Infer is not enabled.");
@@ -181,24 +198,28 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Called when CodeLens showing execution cost is clicked. Opens history webview.
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.detailCodelensAction", (methodKey: string) => {
     createWebviewHistory(context.extensionUri, methodKey);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Called when CodeLens showing execution cost is clicked, but no performance data for the function is available.
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.detailCodelensError", () => {
     vscode.window.showInformationMessage("Re-execute Infer to get fresh performance data.");
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Called when CodeLens for overview is clicked. Opens overview webview.
   disposableCommand = vscode.commands.registerCommand("performance-by-infer.overviewCodelensAction", (selectedMethodName: string, selectedMethodParameters: string[]) => {
     createWebviewOverview(context.extensionUri, selectedMethodName, selectedMethodParameters);
   });
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
+  // Updates the extension accordingly when another file is opened, in case performance data is available for it.
   vscode.window.onDidChangeActiveTextEditor(editor => {
     if (editor) {
       setActiveTextEditor(editor);
@@ -217,6 +238,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   }, null, context.subscriptions);
 
+  // Checks for significant code changes whenever the currently active file is saved.
   vscode.workspace.onDidSaveTextDocument(document => {
     if (document === activeTextEditor.document &&
         isExtensionEnabled &&
@@ -230,7 +252,7 @@ export function activate(context: vscode.ExtensionContext) {
   }, null, context.subscriptions);
 }
 
-// this method is called when your extension is deactivated
+// Called when the extension is deactivated.
 export function deactivate() {
   disableInfer();
   if (disposables) {
@@ -239,6 +261,7 @@ export function deactivate() {
   disposables = [];
 }
 
+// Shows an execution notification in VSCode when the executionFunction is called.
 function showExecutionProgress(executionFunction: Function, titleMessage: string) {
   vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
