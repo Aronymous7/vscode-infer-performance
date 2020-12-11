@@ -52,8 +52,8 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    // Necessary for re-compilation of file with dependencies within the current project. For Maven for example, this could
-    // be something like 'target/classes'.
+    // Necessary for re-compilation of file with dependencies within the current project. For Maven for example, this
+    // could be something like 'target/classes'.
     let classesFolder: string | undefined = vscode.workspace.getConfiguration('performance-by-infer').get('classesFolder');
     if (!classesFolder) {
       classesFolder = (await vscode.window.showInputBox({ prompt: 'Specify the root package folder containing the compiled files.', placeHolder: "e.g. target/classes, build/classes/main, etc.", ignoreFocusOut: true }))?.trim();
@@ -97,8 +97,8 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }
 
-    // Allows the user to decide whether to load the most recently used performance data, read it from the 'infer-out' folder
-    // in the project root, or run a fresh analysis.
+    // Allows the user to decide whether to load the most recently used performance data, read it from the 'infer-out'
+    // folder in the project root, or run a fresh analysis.
     let quickPickArray: string[] = ["Fresh execution (make sure to clean the project before)"];
     const currentWorkspaceFolder = getCurrentWorkspaceFolder();
     try {
@@ -140,8 +140,8 @@ export function activate(context: vscode.ExtensionContext) {
     }
     executionMode = ExecutionMode.File;
 
-    // Allows the user to decide whether to load the most recently used performance data, read it from the 'infer-out' folder
-    // in the project root, or run a fresh analysis.
+    // Allows the user to decide whether to load the most recently used performance data, read it from the 'infer-out'
+    // folder in the project root, or run a fresh analysis.
     let quickPickArray: string[] = ["Fresh execution"];
     const currentWorkspaceFolder = getCurrentWorkspaceFolder();
     let sourceFileName = "";
@@ -219,7 +219,8 @@ export function activate(context: vscode.ExtensionContext) {
   disposables.push(disposableCommand);
   context.subscriptions.push(disposableCommand);
 
-  // Updates the extension accordingly when another file is opened, in case performance data is available for it.
+  // Updates the activeTextEditor when another file is opened, loads the performance data for it in case it is available,
+  // and updates the extension accordingly.
   vscode.window.onDidChangeActiveTextEditor(editor => {
     if (editor) {
       setActiveTextEditor(editor);

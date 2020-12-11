@@ -19,12 +19,21 @@ const fs = require('fs');
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
+// The currently active editor in VSCode. Gets updated every time it changes.
 export let activeTextEditor: vscode.TextEditor;
-export let savedDocumentTexts = new Map<string, string>();        // [document.fileName, text]
 
+// The source code from the last time new Infer data was loaded into the extension. Used for comparing it to the new
+// code when a file gets saved to check for potentially significant code changes.
+export let savedDocumentTexts = new Map<string, string>();          // [document.fileName, text]
+
+// The performance data for the functions in the currently open file. One entry from inferCosts.
 export let currentInferCost: InferCostItem[];
-export let inferCosts = new Map<string, InferCostItem[]>();          // [inferCostItem.loc.file, inferCost]
-export let inferCostHistories = new Map<string, InferCostItem[]>();  // [inferCostItem.id, costHistory]
+
+// Saves the performance data for all files given in the Infer output that is read.
+export let inferCosts = new Map<string, InferCostItem[]>();         // [inferCostItem.loc.file, inferCost]
+
+// Used for displaying the cost history of a function in the history webview.
+export let inferCostHistories = new Map<string, InferCostItem[]>(); // [inferCostItem.id, costHistory]
 
 export function setActiveTextEditor(newActiveTextEditor: vscode.TextEditor) {
   activeTextEditor = newActiveTextEditor;
@@ -46,16 +55,20 @@ function updateActiveTextEditorAndSavedDocumentText() {
   } else { return false; }
 }
 
+// Get the name of the currently open file without file ending.
 export function getSourceFileName(editor: vscode.TextEditor) {
   const sourceFileName = editor.document.fileName.split("/").pop()?.split(".")[0];
   return sourceFileName ? sourceFileName : '';
 }
 
+// Get the absolute path to the folder currently open in VSCode.
 export function getCurrentWorkspaceFolder() {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   return workspaceFolders ? workspaceFolders[0].uri.fsPath : '.';
 }
 
+// Runs the Infer analysis on the current file or project, depending on the mode, and updates the extension
+// accordingly (create annotations, etc.). Used for re-execution.
 export async function executeInfer(classesFolder?: string) {
   if (executionMode === ExecutionMode.Project) {
     if (!classesFolder) {
@@ -81,6 +94,9 @@ export async function executeInfer(classesFolder?: string) {
   return true;
 }
 
+// Enables the extension for the current file or project, depending on the mode. Used for initialization of the
+// extension, where the performance data is either read from an existing file or received by running Infer, and the
+// annotations get created.
 export async function enableInfer(enableMode: EnableMode, buildCommand?: string) {
   if (!updateActiveTextEditorAndSavedDocumentText()) { return false; }
 
@@ -109,6 +125,7 @@ export async function enableInfer(enableMode: EnableMode, buildCommand?: string)
   return true;
 }
 
+// Reads and loads performance data from the 'infer-out' folder in the project root, and updates the extension accordingly.
 export async function readInferOut() {
   if (!await readRawInferOutput("infer-out")) {
     vscode.window.showErrorMessage("infer-out folder not found in project root.");
@@ -124,6 +141,7 @@ export async function readInferOut() {
   return true;
 }
 
+// Update the cost history, and create both the CodeLenses and editor decorations for the current file.
 function createInferAnnotations() {
   if (costDegreeDecorationTypes.length === 0) {
     initializeNameDecorationTypes();
@@ -135,6 +153,7 @@ function createInferAnnotations() {
   createEditorDecorators();
 }
 
+// Dispose all decorations, CodeLenses and webviews, and reset and unload all the performance data.
 export function disableInfer() {
   disposeDecorationTypes();
   disposeCodeLensProviders();
@@ -144,6 +163,7 @@ export function disableInfer() {
   savedDocumentTexts = new Map<string, string>();
 }
 
+// Run a fresh Infer analysis on the project currently open in VSCode, and load the data into the extension.
 async function runInferOnProject(buildCommand: string) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
   try {
@@ -163,6 +183,8 @@ async function runInferOnProject(buildCommand: string) {
   return await readRawInferOutput("infer-out-vscode/project-raw");
 }
 
+// Run a fresh Infer analysis on the currently open file, and load the data into the extension. If the classesFolder is
+// provided, this is interpreted as running Infer on a single file within a project.
 async function runInferOnCurrentFile(classesFolder?: string) {
   const sourceFilePath = activeTextEditor.document.fileName;
 
@@ -209,6 +231,8 @@ async function runInferOnCurrentFile(classesFolder?: string) {
   }
 }
 
+// Read the performance data output from Infer, convert it to our own data structure for Infer cost items, load it into
+// the extension, and persist it.
 async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinProject?: boolean) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
@@ -309,6 +333,7 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
   return true;
 }
 
+// Read and load persisted performance data that has been saved in the form of our own data structure for Infer cost items.
 async function readInferCostsReport(costsReportFile: string) {
   const currentWorkspaceFolder = getCurrentWorkspaceFolder();
 
@@ -343,6 +368,8 @@ async function readInferCostsReport(costsReportFile: string) {
   return true;
 }
 
+// Goes through all the Infer cost items that have been read from a performance data file, groups them by file name, and
+// loads them into the extension.
 function initializeInferCostsAndCurrentInferCost(inferCost: InferCostItem[]) {
   let sourceFilePath: string | undefined;
   let fileInferCost: InferCostItem[] = [];
@@ -369,6 +396,7 @@ function initializeInferCostsAndCurrentInferCost(inferCost: InferCostItem[]) {
   return true;
 }
 
+// Updates the cost history of all functions for which the performance data has been updated.
 function updateInferCostHistory() {
   let currentTime = new Date().toLocaleString('en-US', { hour12: false });
   for (const inferCost of inferCosts) {
