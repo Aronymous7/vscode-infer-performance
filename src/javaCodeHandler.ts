@@ -10,16 +10,18 @@ import {
 
 const Diff = require('diff');
 
-export let nonConstantMethods: string[] = [];
+export let nonConstantMethods: string[] = [];   // should be detected as significant code change when added/removed/changed
 
+// event that triggers when significant code change is detected
 const significantCodeChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 export const onSignificantCodeChange: vscode.Event<void> = significantCodeChange.event;
 
 const methodDeclarationRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )*(?:\<.*\>\s+)?[\w\<\>\[\]\?]+\s+([A-Za-z_$][A-Za-z0-9_]*)(?<!if|switch|while|for|(?:public|protected|private|return) [A-Za-z_$][A-Za-z0-9_]*)\([^\)]*\)/gm);
 const significantCodeChangeRegex = new RegExp(/(?<!\/\/.*)(while *\([^\)]*\)|for *\([^\)]*\)|[A-Za-z_$][A-Za-z0-9_]*(?<!\W+(if|switch))\([^\)]*\))/g);
 const classRegex = new RegExp(/^(?:public|protected|private|static|final|native|synchronized|abstract|transient|\t| )*class\s[A-Za-z_$][A-Za-z0-9_]*(?:\<(.*?)\>)?/gm);
-// public class SequenceFileProxyLoader<C extends Compound, B extends Blah> implements ProxySequenceReader<C> {
 
+// Resets the methods that have been saved as being non-constant, either for the entire project or a single file. Called
+// when new performance data is read, which might change the complexity of methods.
 export function resetNonConstantMethods() {
   nonConstantMethods = [];
 }
@@ -32,6 +34,8 @@ export function resetNonConstantMethodsForFile() {
   }
 }
 
+// Goes through the text of a source file and detects all method declarations via regular expressions, and returns them
+// in the form of an array of the custom type MethodDeclaration.
 export function findMethodDeclarations(document: vscode.TextDocument) {
   const savedDocumentText = savedDocumentTexts.get(activeTextEditor.document.fileName);
   const typeExtensions = getGenericTypeExtensions(savedDocumentText ? savedDocumentText : document.getText());
@@ -55,12 +59,17 @@ export function findMethodDeclarations(document: vscode.TextDocument) {
     const parameterTypes = getParameterTypesFromMethodDeclaration(matches[0], typeExtensions);
 
     if (declarationRange && nameRange) {
-      methodDeclarations.push({ name: matches[1], parameters: parameterTypes, declarationRange: declarationRange, nameRange: nameRange });
+      methodDeclarations.push({ name: matches[1], parameterTypes: parameterTypes, declarationRange: declarationRange, nameRange: nameRange });
     }
   }
   return methodDeclarations;
 }
 
+// Looks for potentially significant code changes in the currently open source file that has been saved, by comparing it
+// to the previous code for which the performance data has been computed. The addition/removal/change of a loop or a
+// call to a non-constant method is regarded as a significant code change. If such changes are detected, they are added
+// as potential caueses for a change of cost to the history of the method containing the code change. Additionally, the
+// significantCodeChange event is fired, and true is returned if changes were detected, otherwise false.
 export function significantCodeChangeCheck(savedText: string) {
   const previousText = savedDocumentTexts.get(activeTextEditor.document.fileName);
   if (!previousText) { return false; }
@@ -113,7 +122,7 @@ export function significantCodeChangeCheck(savedText: string) {
   }
 
   for (const inferCostItem of currentInferCost) {
-    let causeMethods = containingAndCauseMethods.get(`${inferCostItem.method_name}(${inferCostItem.parameters.join(",")})`);
+    let causeMethods = containingAndCauseMethods.get(`${inferCostItem.method_name}(${inferCostItem.parameterTypes.join(",")})`);
     inferCostItem.changeCauseMethods = causeMethods;
     let inferCostHistoryItem = inferCostHistories.get(inferCostItem.id);
     if (inferCostHistoryItem) {
@@ -127,6 +136,9 @@ export function significantCodeChangeCheck(savedText: string) {
   return isSignificant;
 }
 
+// Extracts the type of each parameter of the given methodDeclaration, replaces it according to the given typeExtensions
+// (for example when the class defines <A extends B>, then type A is replaced with type B due to the way that Infer deals
+// with generics), and returns them as an array.
 function getParameterTypesFromMethodDeclaration(methodDeclaration: string, typeExtensions: Map<string, string>) {
   let parameterTypes = methodDeclaration.split("(")[1].split(")")[0].split(",");
   if (parameterTypes[0] === "") {
@@ -149,6 +161,8 @@ function getParameterTypesFromMethodDeclaration(methodDeclaration: string, typeE
   return parameterTypes;
 }
 
+// Extracts the type extensions defined in the declaration of a class in the current file, for example <A extends B>. This
+// is needed due to the way that Infer deals with generic types.
 function getGenericTypeExtensions(documentText: string) {
   const regex = new RegExp(classRegex);
   let matches: RegExpExecArray | null;

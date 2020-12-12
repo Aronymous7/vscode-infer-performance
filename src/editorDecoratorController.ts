@@ -48,7 +48,7 @@ export function createEditorDecorators() {
   }
   for (let inferCostItem of currentInferCost) {
     for (const methodDeclaration of methodDeclarations) {
-      if (inferCostItem.method_name === methodDeclaration.name && JSON.stringify(inferCostItem.parameters) === JSON.stringify(methodDeclaration.parameters)) {
+      if (inferCostItem.method_name === methodDeclaration.name && JSON.stringify(inferCostItem.parameterTypes) === JSON.stringify(methodDeclaration.parameterTypes)) {
         const declarationDecoration = { range: methodDeclaration.declarationRange };
         const nameDecoration = { range: methodDeclaration.nameRange, hoverMessage: inferCostItem.exec_cost.polynomial };
 

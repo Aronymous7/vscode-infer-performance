@@ -15,10 +15,10 @@ export enum EnableMode {
 export interface InferCostItem {
   readonly id: string;
   readonly method_name: string;
-  readonly parameters: string[];  // parameter types
-  timestamp?: string;             // timestamp for cost history
+  readonly parameterTypes: string[];
+  timestamp?: string;       // timestamp for cost history
   readonly loc: {
-    readonly file: string;        // absolute path
+    readonly file: string;  // absolute path
     readonly lnum: number;
   };
   readonly exec_cost: {
@@ -41,7 +41,7 @@ export interface TraceItem {
 // Used for matching the output from Infer with the functions in the source code, and insert the CodeLenses above them.
 export interface MethodDeclaration {
   readonly name: string;
-  readonly parameters: string[];
+  readonly parameterTypes: string[];
   readonly declarationRange: vscode.Range;
   readonly nameRange: vscode.Range;
 }

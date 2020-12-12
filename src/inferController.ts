@@ -282,7 +282,7 @@ async function readRawInferOutput(inferOutRawFolder: string, isSingleFileWithinP
       inferCost.push({
         id: inferCostRawItem.procedure_id,
         method_name: inferCostRawItem.procedure_name,
-        parameters: parameterTypes,
+        parameterTypes: parameterTypes,
         loc: {
           file: executionMode === ExecutionMode.Project ? `${currentWorkspaceFolder}/${inferCostRawItem.loc.file}` : activeTextEditor.document.fileName,
           lnum: inferCostRawItem.loc.lnum

@@ -53,7 +53,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
       }
       let currentInferCostItem: InferCostItem | undefined;
       for (let inferCostItem of currentInferCost) {
-        if (inferCostItem.method_name === thisMethodDeclaration.name && JSON.stringify(inferCostItem.parameters) === JSON.stringify(thisMethodDeclaration.parameters)) {
+        if (inferCostItem.method_name === thisMethodDeclaration.name && JSON.stringify(inferCostItem.parameterTypes) === JSON.stringify(thisMethodDeclaration.parameterTypes)) {
           currentInferCostItem = inferCostItem;
           break;
         }

@@ -29,7 +29,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
       methodDeclarations.some(methodDeclaration => {
         if (methodDeclaration.declarationRange.end.line === codeLens.range.end.line) {
           selectedMethodName = methodDeclaration.name;
-          selectedMethodParameters = methodDeclaration.parameters;
+          selectedMethodParameters = methodDeclaration.parameterTypes;
           return true;
         }
       });
