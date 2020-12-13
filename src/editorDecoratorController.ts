@@ -6,9 +6,13 @@ import { InferCostItem } from './types';
 // [inferCostItem.id, decorationType]
 let costChangeDecorationTypes = new Map<string, vscode.TextEditorDecorationType>();
 
+// Number of different decoration types for different degrees of cost, in this case three: constant,
+// linear, and quadratic or above.
 const costDegreeDecorationTypesLength = 3;
+
 export let costDegreeDecorationTypes: vscode.TextEditorDecorationType[] = [];
 
+// Dispose the used decoration types, which removes all created editor decorations.
 export function disposeDecorationTypes() {
   for (const decorationType of costDegreeDecorationTypes) {
     decorationType.dispose();
@@ -21,6 +25,8 @@ export function disposeDecorationTypes() {
   costChangeDecorationTypes = new Map<string, vscode.TextEditorDecorationType>();
 }
 
+// Initialize the decoration types for function names (green, yellow and red for constant, linear
+// and quadratic or above respectively).
 export function initializeNameDecorationTypes() {
   costDegreeDecorationTypes.push(vscode.window.createTextEditorDecorationType({
     backgroundColor: 'rgba(0, 255, 0, 0.4)',
@@ -39,6 +45,9 @@ export function initializeNameDecorationTypes() {
   }));
 }
 
+// Create the editor decorations for all functions in the current file. This includes coloring the
+// function names, and potentially inserting the change in cost since the last analysis by Infer if
+// it has changed significantly.
 export function createEditorDecorators() {
   const methodDeclarations = findMethodDeclarations(activeTextEditor.document);
 
@@ -79,6 +88,8 @@ export function createEditorDecorators() {
   }
 }
 
+// Creates the decoration type that inserts the change in cost after the function parameters when
+// the cost of the function has changed significantly.
 function significantCostChangeDecorationType(currentInferCostItem: InferCostItem) {
   const inferCostItemHistory = inferCostHistories.get(currentInferCostItem.id);
   if (!inferCostItemHistory || inferCostItemHistory.length < 2) { return undefined; }

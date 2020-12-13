@@ -7,6 +7,7 @@ import {
 } from '../javaCodeHandler';
 import { currentInferCost } from '../inferController';
 
+// CodeLenses for the detail/history view for functions, that also show the execution cost in the title.
 export class DetailCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
 
@@ -20,6 +21,7 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
     });
   }
 
+  // Initialize the CodeLenses, including their positions, for all functions of a file.
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     if (isExtensionEnabled) {
       this.document = document;
@@ -33,6 +35,8 @@ export class DetailCodelensProvider implements vscode.CodeLensProvider {
     return [];
   }
 
+  // Find the performance data for the function of a CodeLens, and assign the according title and
+  // command when clicked to the CodeLens.
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
     if (isExtensionEnabled) {
       if (!this.document) { return; }

@@ -9,6 +9,7 @@ export let hasFileCodeLenses = new Map<string, boolean>();   // [sourceFilePath,
 let overviewCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
 let detailCodeLensProviderDisposables = new Map<string, vscode.Disposable>();
 
+// Dispose all CodeLenses for all files.
 export function disposeCodeLensProviders() {
   for (const codeLensProviderMapEntry of detailCodeLensProviderDisposables) {
     codeLensProviderMapEntry[1].dispose();
@@ -19,6 +20,7 @@ export function disposeCodeLensProviders() {
   hasFileCodeLenses = new Map<string, boolean>();
 }
 
+// Creates new CodeLenses for all functions in the current file.
 export function createCodeLenses() {
   const sourceFilePath = activeTextEditor.document.fileName;
   const docSelector: vscode.DocumentSelector = { pattern: sourceFilePath, language: 'java' };
