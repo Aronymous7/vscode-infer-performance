@@ -4,6 +4,7 @@ import { currentInferCost, inferCostHistories, activeTextEditor } from '../infer
 let webviewOverview: vscode.WebviewPanel;
 let webviewHistory: vscode.WebviewPanel;
 
+// Dispose and close all open webviews.
 export function disposeWebviews() {
   if (webviewOverview) {
     webviewOverview.dispose();
@@ -13,6 +14,8 @@ export function disposeWebviews() {
   }
 }
 
+// Create the webview that shows an overview of the costs of all functions in the current file, where
+// the function on which the overview CodeLens was clicked is highlighted in the overview.
 export function createWebviewOverview(extensionUri: vscode.Uri, selectedMethodName: string, selectedMethodParameters: string[]) {
   if (webviewOverview) {
     webviewOverview.dispose();
@@ -67,6 +70,9 @@ export function createWebviewOverview(extensionUri: vscode.Uri, selectedMethodNa
 </html>`;
 }
 
+// Create the webview that shows the detail/history view for a function. This includes the code
+// changes that potentially led or might lead to a change in cost, the trace for the cost as
+// provided by Infer, and of course the costs themselves.
 export function createWebviewHistory(extensionUri: vscode.Uri, methodKey: string) {
   if (webviewHistory) {
     webviewHistory.dispose();

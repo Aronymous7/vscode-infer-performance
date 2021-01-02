@@ -2,11 +2,13 @@ import * as vscode from 'vscode';
 import { isExtensionEnabled } from '../extension';
 import { findMethodDeclarations } from '../javaCodeHandler';
 
+// CodeLenses for opening the overview of the functions of a file.
 export class OverviewCodelensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
 
   private document: vscode.TextDocument | undefined;
 
+  // Initialize the CodeLenses, including their positions, for all functions of a file.
   public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
     if (isExtensionEnabled) {
       this.document = document;
@@ -20,6 +22,7 @@ export class OverviewCodelensProvider implements vscode.CodeLensProvider {
     return [];
   }
 
+  // Assign the title and command when clicked to a CodeLens.
   public resolveCodeLens(codeLens: vscode.CodeLens, token: vscode.CancellationToken) {
     if (isExtensionEnabled) {
       if (!this.document) { return; }
