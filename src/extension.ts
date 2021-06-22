@@ -269,7 +269,7 @@ function showExecutionProgress(executionFunction: Function, titleMessage: string
     title: titleMessage,
     cancellable: false
   }, () => {
-    return new Promise(async resolve => {
+    return new Promise<void>(async resolve => {
       let success: boolean;
       success = await executionFunction();
       if (success) {
