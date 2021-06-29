@@ -3,9 +3,9 @@
   "displayName": "Static Performance by Infer",
   "description": "Integration of Infer's static performance analysis for Java code into VSCode.",
   "version": "1.0.0",
-  "publisher": "Aaron Beigelbeck",
+  "publisher": "AaronBeigelbeck",
   "engines": {
-    "vscode": "^1.45.0"
+    "vscode": "^1.47.0"
   },
   "categories": [
     "Debuggers"
